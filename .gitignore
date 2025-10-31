@@ -1,0 +1,9 @@
+_build/
+.eunit/
+.rebar3/
+logs/
+*.beam
+erl_crash.dump
+*.bak
+/tmp/
+/docs/api.yaml

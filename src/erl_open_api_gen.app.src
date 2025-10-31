@@ -1,0 +1,8 @@
+{application, erl_open_api_gen,
+ [{description, "OpenAPI ↔ Erlang generator plugin"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {erl_open_api_gen_app, []}},
+  {applications, [kernel, stdlib, inets]},
+  {env, []}
+ ]}.
