@@ -7,10 +7,10 @@
 write(OpenapiMap, OutputPath) ->
     %% Convert map to YAML string
     YamlContent = map_to_yaml(OpenapiMap, 0),
-    
+
     %% Ensure directory exists
     ok = filelib:ensure_dir(OutputPath),
-    
+
     %% Write to file
     file:write_file(OutputPath, YamlContent).
 

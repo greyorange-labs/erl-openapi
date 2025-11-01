@@ -8,7 +8,7 @@
 assemble(_Routes, Schemas, Metadata) ->
     %% Build paths object from schemas
     Paths = build_paths(Schemas),
-    
+
     %% Start with metadata and add paths
     Metadata#{
         <<"paths">> => Paths
@@ -23,13 +23,13 @@ build_paths(Schemas) ->
             Method = string:lowercase(binary_to_list(maps:get(<<"method">>, Schema))),
             MethodBin = list_to_binary(Method),
             Operation = build_operation(Schema),
-            
+
             %% Get existing methods for this path or create new map
             PathMethods = maps:get(Path, Acc, #{}),
-            
+
             %% Add this method/operation
             NewPathMethods = PathMethods#{MethodBin => Operation},
-            
+
             Acc#{Path => NewPathMethods}
         end,
         #{},
@@ -40,13 +40,13 @@ build_paths(Schemas) ->
 %% Build operation object from schema
 build_operation(Schema) ->
     Base = #{},
-    
+
     %% Add operationId (required)
     WithOpId = case maps:get(<<"operation_id">>, Schema, undefined) of
         undefined -> Base;
         OpId -> Base#{<<"operationId">> => OpId}
     end,
-    
+
     %% Add optional fields
     WithSummary = add_if_present(WithOpId, <<"summary">>, Schema),
     WithDesc = add_if_present(WithSummary, <<"description">>, Schema),
@@ -56,7 +56,7 @@ build_operation(Schema) ->
     WithReqBody = add_if_present(WithParams, <<"requestBody">>, Schema),
     WithResponses = add_if_present(WithReqBody, <<"responses">>, Schema),
     WithDeprecated = add_if_present(WithResponses, <<"deprecated">>, Schema),
-    
+
     WithDeprecated.
 
 %% Add field to map if present in source

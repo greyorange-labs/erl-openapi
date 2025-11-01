@@ -19,7 +19,7 @@ generate_new_handler(HandlerPath, ModuleName, Openapi) ->
 
     %% Ensure directory exists
     ok = filelib:ensure_dir(HandlerPath),
-    
+
     %% Write to file
     ok = file:write_file(HandlerPath, iolist_to_binary(Content)),
 

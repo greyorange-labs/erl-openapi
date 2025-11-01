@@ -5,10 +5,10 @@
 write_all(App, Ops, OpenapiSpec) ->
     Dir = filename:join(["apps", App, "priv", "json_schemas"]),
     ok = ensure_dir(Dir),
-    
+
     %% Write global metadata file
     write_metadata(Dir, OpenapiSpec),
-    
+
     %% Write individual operation files with full definitions
     lists:foreach(fun(Op) -> write_one(Dir, Op) end, Ops),
     ok.
@@ -22,7 +22,7 @@ write_all(App, Ops) ->
 write_one(Dir, #{path := Path, method := Method, operation_id := OpId, def := Def}) ->
     %% Build complete operation JSON structure
     OperationJson = build_operation_json(Path, Method, OpId, Def),
-    
+
     File = filename:join(Dir, filename(OpId)),
     Json = jsx:prettify(jsx:encode(OperationJson)),
     file:write_file(File, Json).
@@ -43,7 +43,7 @@ build_operation_json(Path, Method, OpId, Def) ->
         <<"path">> => Path,
         <<"method">> => list_to_binary(string:uppercase(binary_to_list(Method)))
     },
-    
+
     %% Add optional fields from OpenAPI definition
     WithSummary = add_if_present(Base, <<"summary">>, Def),
     WithDesc = add_if_present(WithSummary, <<"description">>, Def),
@@ -53,7 +53,7 @@ build_operation_json(Path, Method, OpId, Def) ->
     WithReqBody = add_if_present(WithParams, <<"requestBody">>, Def),
     WithResponses = add_if_present(WithReqBody, <<"responses">>, Def),
     WithDeprecated = add_if_present(WithResponses, <<"deprecated">>, Def),
-    
+
     WithDeprecated.
 
 %% Add field to map if present in source
@@ -73,7 +73,7 @@ write_metadata(Dir, OpenapiSpec) ->
         <<"tags">> => maps:get(<<"tags">>, OpenapiSpec, []),
         <<"components">> => maps:get(<<"components">>, OpenapiSpec, #{})
     },
-    
+
     File = filename:join(Dir, "_openapi_metadata.json"),
     Json = jsx:prettify(jsx:encode(Metadata)),
     file:write_file(File, Json).
