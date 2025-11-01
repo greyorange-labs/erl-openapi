@@ -13,10 +13,14 @@ update(#{handler_path := HandlerPath, dry_run := DryRun}, Openapi) ->
                     ToAdd = [Op || Op <- Ops, not lists:member(maps:get(operation_id, Op), ExistingOps)],
                     %% Check if list is empty to decide whether to prepend comma
                     ListEmpty = is_empty_list(Prefix),
-                    Sep = case ListEmpty of true -> "\n"; false -> ",\n" end,
                     AddText = case ToAdd of
                         [] -> "";
-                        _ -> Sep ++ string:join([route_entry(Op) || Op <- ToAdd], ",\n") ++ trailer_comment(length(ToAdd))
+                        _ ->
+                            Entries = string:join([route_entry(Op) || Op <- ToAdd], ",\n"),
+                            case ListEmpty of
+                                true -> Entries ++ trailer_comment(length(ToAdd));
+                                false -> ",\n" ++ Entries ++ trailer_comment(length(ToAdd))
+                            end
                     end,
                     NewText = Prefix ++ AddText ++ Suffix,
                     Diff = diff_preview:unified(Text, NewText, HandlerPath),
@@ -45,7 +49,7 @@ is_empty_list(Prefix) ->
 locate_routes_end(Text) ->
     %% Find routes() -> ... ]. pattern
     case re:run(Text, "routes\\(\\)\\s*->\\s*\\[([\\s\\S]*?)\\]\\.", [{capture, [0, 1], list}]) of
-        {match, [FullMatch, InsideList]} ->
+        {match, [_FullMatch, _InsideList]} ->
             %% Find where the closing ] is
             case string:str(Text, "]." ) of
                 0 -> {error, routes_block_not_found};
@@ -60,11 +64,37 @@ locate_routes_end(Text) ->
 
 route_entry(#{path := Path, method := Method, operation_id := OpId, def := Def}) ->
     NeedsContentTypes = has_request_body(Def),
-    MethodKV = io_lib:format("<<\"~s\">> => #{operation_id => '~s'~s}", [Method, OpId, content_types_suffix(NeedsContentTypes)]),
-    io_lib:format(
-      "        #{~n            path => \"~s\",~n            allowed_methods => #{~s}~n        }",
-      [Path, MethodKV]
-    ).
+    %% Generate with expanded format to match handler_generator style
+    case NeedsContentTypes of
+        true ->
+            io_lib:format(
+                "        #{~n"
+                "            path => \"~s\",~n"
+                "            allowed_methods => #{~n"
+                "                <<\"~s\">> => #{~n"
+                "                    operation_id => '~s',~n"
+                "                    content_types_accepted => [{<<\"application\">>, <<\"json\">>, '*'}]~n"
+                "                }~n"
+                "            }~n"
+                "        }",
+                [Path, Method, to_list(OpId)]
+            );
+        false ->
+            io_lib:format(
+                "        #{~n"
+                "            path => \"~s\",~n"
+                "            allowed_methods => #{~n"
+                "                <<\"~s\">> => #{~n"
+                "                    operation_id => '~s'~n"
+                "                }~n"
+                "            }~n"
+                "        }",
+                [Path, Method, to_list(OpId)]
+            )
+    end.
+
+to_list(B) when is_binary(B) -> binary_to_list(B);
+to_list(L) when is_list(L) -> L.
 
 content_types_suffix(true) -> ", content_types_accepted => [{<<\"application\">>, <<\"json\">>, '*'}]";
 content_types_suffix(false) -> "".

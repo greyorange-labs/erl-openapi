@@ -8,17 +8,21 @@ generate_new_handler(HandlerPath, ModuleName, Openapi) ->
     %% Build the complete handler module content
     Content = [
         module_header(ModuleName),
+        "\n",  %% Blank line after module
         exports(),
         "\n",
         routes_function(Ops),
         "\n",
         handle_request_clauses(Ops),
-        "\n",
         catch_all_clause()
     ],
 
     %% Write to file
-    file:write_file(HandlerPath, iolist_to_binary(Content)).
+    ok = file:write_file(HandlerPath, iolist_to_binary(Content)),
+
+    %% Format using erlfmt
+    _ = code_formatter:format_file(HandlerPath),
+    ok.
 
 module_header(ModuleName) ->
     io_lib:format("-module(~s).\n", [ModuleName]).
@@ -41,15 +45,34 @@ routes_function(Ops) ->
 
 route_entry(#{path := Path, method := Method, operation_id := OpId, def := Def}) ->
     NeedsContentTypes = has_request_body(Def),
-    MethodKV = io_lib:format("<<\"~s\">> => #{operation_id => '~s'~s}",
-                             [Method, to_list(OpId), content_types_suffix(NeedsContentTypes)]),
-    io_lib:format(
-        "        #{~n"
-        "            path => \"~s\",~n"
-        "            allowed_methods => #{~s}~n"
-        "        }",
-        [Path, MethodKV]
-    ).
+    %% Generate with expanded format to help erlfmt maintain multi-line structure
+    case NeedsContentTypes of
+        true ->
+            io_lib:format(
+                "        #{~n"
+                "            path => \"~s\",~n"
+                "            allowed_methods => #{~n"
+                "                <<\"~s\">> => #{~n"
+                "                    operation_id => '~s',~n"
+                "                    content_types_accepted => [{<<\"application\">>, <<\"json\">>, '*'}]~n"
+                "                }~n"
+                "            }~n"
+                "        }",
+                [Path, Method, to_list(OpId)]
+            );
+        false ->
+            io_lib:format(
+                "        #{~n"
+                "            path => \"~s\",~n"
+                "            allowed_methods => #{~n"
+                "                <<\"~s\">> => #{~n"
+                "                    operation_id => '~s'~n"
+                "                }~n"
+                "            }~n"
+                "        }",
+                [Path, Method, to_list(OpId)]
+            )
+    end.
 
 content_types_suffix(true) ->
     ", content_types_accepted => [{<<\"application\">>, <<\"json\">>, '*'}]";
@@ -73,8 +96,7 @@ clause_text(#{operation_id := OpId}) ->
         "    %% {Code, RespBody} = your_controller:handle_", string:lowercase(OpStr), "(ReqBody),\n",
         "    Code = 501,\n",
         "    RespBody = #{message => <<\"Yet to be implemented\">>},\n",
-        "    {Code, RespBody};\n",
-        "\n"
+        "    {Code, RespBody};\n"
     ].
 
 catch_all_clause() ->

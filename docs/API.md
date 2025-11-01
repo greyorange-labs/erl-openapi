@@ -3,24 +3,40 @@
 ## Commands
 
 ### OpenAPI → Erlang
-```
+
+Generates or updates Erlang handler modules from OpenAPI specifications.
+
+```bash
 rebar3 openapi gen erlang \
   --spec <path-to-openapi.yaml> \
   --app <erlang_app_name> \
   --handler <path-to-handler.erl> \
   [--dry-run] [--backup]
 ```
-- Writes Draft-04 schemas to `apps/<app>/priv/json_schemas/`
-- Appends route entries to `routes/0` (with placement comment)
-- Inserts `handle_request/3` stubs before catch-all in requested style
 
-Stub format:
-```
+**Behavior:**
+- **If handler doesn't exist**: Creates complete handler module from scratch
+- **If handler exists**: Updates it with new routes and clauses (idempotent)
+
+**What it generates:**
+1. **Handler module** with:
+   - `routes/0` function with route entries
+   - `handle_request/3` clauses for each operationId
+   - Catch-all clause
+   - Auto-formatted using erlfmt
+
+2. **JSON Schema files** in `apps/<app>/priv/json_schemas/`:
+   - One JSON file per operationId
+   - Draft-04 format
+   - Properly formatted with indentation
+
+**Generated stub format:**
+```erlang
 handle_request('NEW-OPS-ID', #{decoded_req_body := ReqBody} = _Req, _Context) ->
     %% TODO: Uncomment following, adding relevant business logic or calling relevant logic/resource handler function
-    %% {Code, RespBody} = bsh_logging_http_controller:disable_debug(ReqBody),
+    %% {Code, RespBody} = your_controller:handle_new-ops-id(ReqBody),
     Code = 501,
-    RespBody = #{message => <<"Yet to be implemented">>}
+    RespBody = #{message => <<"Yet to be implemented">>},
     {Code, RespBody};
 ```
 

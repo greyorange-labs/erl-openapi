@@ -7,3 +7,6 @@ erl_crash.dump
 *.bak
 /tmp/
 /docs/api.yaml
+/test_output/
+/apps/test_app/
+/ebin/

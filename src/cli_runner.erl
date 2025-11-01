@@ -42,6 +42,8 @@ gen_erlang(SpecPath, App, Handler, DryRun, Backup) ->
                                     case handler_clauses_updater:update(Ctx, Openapi) of
                                         {ok, _HF2, Diff2} ->
                                             io:format("~s~n~s~n", [iolist_to_binary(Diff1), iolist_to_binary(Diff2)]),
+                                            %% Format the updated file
+                                            _ = code_formatter:format_file(HandlerPath),
                                             ok;
                                         {error, E2} -> {error, E2}
                                     end;

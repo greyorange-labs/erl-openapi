@@ -10,7 +10,8 @@ write_one(App, #{operation_id := OpId, def := Def}) ->
     Dir = filename:join(["apps", App, "priv", "json_schemas"]),
     ok = ensure_dir(Dir),
     File = filename:join(Dir, filename(OpId)),
-    Json = jsx:encode(Schemas),
+    %% Format JSON with proper indentation
+    Json = jsx:prettify(jsx:encode(Schemas)),
     file:write_file(File, Json).
 
 filename(OpId) when is_binary(OpId) ->
