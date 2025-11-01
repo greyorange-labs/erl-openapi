@@ -1,0 +1,70 @@
+openapi: 3.0.3
+info:
+  title: Sample API
+  version: 2.0.0
+paths:
+  /api/butler_shared/v1/logging/debug/disable:
+    post:
+      operationId: DISABLE-DEBUG-LOGGING
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                source:
+                  type: string
+              required: [reason, source]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+  /api/butler_shared/v1/logging/debug/enable:
+    post:
+      operationId: ENABLE-DEBUG-LOGGING
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ttl:
+                  type: integer
+      responses:
+        "200":
+          description: OK
+  /api/butler_shared/v1/logging/level:
+    get:
+      operationId: GET-LOGGING-LEVEL
+      responses:
+        "200":
+          description: Current logging level
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  level:
+                    type: string
+    put:
+      operationId: SET-LOGGING-LEVEL
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                level:
+                  type: string
+              required: [level]
+      responses:
+        "200":
+          description: Level updated

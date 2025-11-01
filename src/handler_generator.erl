@@ -1,0 +1,88 @@
+-module(handler_generator).
+-export([generate_new_handler/3]).
+
+%% Generate a complete handler module from scratch
+generate_new_handler(HandlerPath, ModuleName, Openapi) ->
+    Ops = openapi_validator:list_operations(Openapi),
+
+    %% Build the complete handler module content
+    Content = [
+        module_header(ModuleName),
+        exports(),
+        "\n",
+        routes_function(Ops),
+        "\n",
+        handle_request_clauses(Ops),
+        "\n",
+        catch_all_clause()
+    ],
+
+    %% Write to file
+    file:write_file(HandlerPath, iolist_to_binary(Content)).
+
+module_header(ModuleName) ->
+    io_lib:format("-module(~s).\n", [ModuleName]).
+
+exports() ->
+    "-export([routes/0, handle_request/3]).\n".
+
+routes_function(Ops) ->
+    case Ops of
+        [] ->
+            "routes() ->\n    [\n    ].\n";
+        _ ->
+            RouteEntries = [route_entry(Op) || Op <- Ops],
+            [
+                "routes() ->\n    [\n",
+                string:join(RouteEntries, ",\n"),
+                "\n    ].\n"
+            ]
+    end.
+
+route_entry(#{path := Path, method := Method, operation_id := OpId, def := Def}) ->
+    NeedsContentTypes = has_request_body(Def),
+    MethodKV = io_lib:format("<<\"~s\">> => #{operation_id => '~s'~s}",
+                             [Method, to_list(OpId), content_types_suffix(NeedsContentTypes)]),
+    io_lib:format(
+        "        #{~n"
+        "            path => \"~s\",~n"
+        "            allowed_methods => #{~s}~n"
+        "        }",
+        [Path, MethodKV]
+    ).
+
+content_types_suffix(true) ->
+    ", content_types_accepted => [{<<\"application\">>, <<\"json\">>, '*'}]";
+content_types_suffix(false) ->
+    "".
+
+has_request_body(Def) ->
+    case maps:get(<<"requestBody">>, Def, undefined) of
+        undefined -> false;
+        _ -> true
+    end.
+
+handle_request_clauses(Ops) ->
+    [clause_text(Op) || Op <- Ops].
+
+clause_text(#{operation_id := OpId}) ->
+    OpStr = to_list(OpId),
+    [
+        "handle_request('", OpStr, "', #{decoded_req_body := ReqBody} = _Req, _Context) ->\n",
+        "    %% TODO: Uncomment following, adding relevant business logic or calling relevant logic/resource handler function\n",
+        "    %% {Code, RespBody} = your_controller:handle_", string:lowercase(OpStr), "(ReqBody),\n",
+        "    Code = 501,\n",
+        "    RespBody = #{message => <<\"Yet to be implemented\">>},\n",
+        "    {Code, RespBody};\n",
+        "\n"
+    ].
+
+catch_all_clause() ->
+    "handle_request(OperationId, _Req, Context) ->\n"
+    "    RespBody = #{message => <<\"Not implemented\">>},\n"
+    "    RespHeaders = #{<<\"content-type\">> => <<\"application/json\">>},\n"
+    "    {501, RespBody, Context, RespHeaders}.\n".
+
+to_list(B) when is_binary(B) -> binary_to_list(B);
+to_list(L) when is_list(L) -> L.
+

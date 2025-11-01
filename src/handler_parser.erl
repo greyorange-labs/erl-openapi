@@ -16,7 +16,7 @@ implemented_ops(TextBin) when is_binary(TextBin) ->
 
 maybe_op_from_clause(Line) ->
     %% matches: handle_request('OP-ID',
-    case re:run(Line, "handle_request\\('\\([^']+\\)'", [{capture, [1], list}]) of
+    case re:run(Line, "handle_request\\('([^']+)'", [{capture, [1], list}]) of
         {match, [Op]} -> [list_to_binary(Op)];
         _ -> []
     end.
