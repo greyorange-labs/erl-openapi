@@ -57,16 +57,16 @@ find_rebar3() ->
         Path -> Path
     end.
 
-%% Find project root by looking for rebar.config
-find_project_root(FilePath) ->
-    Dir = filename:dirname(FilePath),
-    case filelib:is_file(filename:join(Dir, "rebar.config")) of
-        true -> Dir;
-        false ->
-            Parent = filename:dirname(Dir),
-            case Parent of
-                Dir -> Dir;  %% Reached filesystem root
-                _ -> find_project_root(Parent)
-            end
-    end.
+%% Find project root by looking for rebar.config (currently unused but kept for future use)
+%% find_project_root(FilePath) ->
+%%     Dir = filename:dirname(FilePath),
+%%     case filelib:is_file(filename:join(Dir, "rebar.config")) of
+%%         true -> Dir;
+%%         false ->
+%%             Parent = filename:dirname(Dir),
+%%             case Parent of
+%%                 Dir -> Dir;  %% Reached filesystem root
+%%                 _ -> find_project_root(Parent)
+%%             end
+%%     end.
 

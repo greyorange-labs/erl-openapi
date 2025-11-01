@@ -15,7 +15,8 @@ gen_erlang(SpecPath, App, Handler, DryRun, Backup) ->
                 ok ->
                     HandlerPath = binary_to_list(to_bin(Handler)),
                     Ops = openapi_validator:list_operations(Openapi),
-                    ok = schema_writer:write_all(binary_to_list(to_bin(App)), Ops),
+                    %% Write enhanced schema files with full operation definitions + metadata
+                    ok = schema_writer:write_all(binary_to_list(to_bin(App)), Ops, Openapi),
 
                     %% Check if handler exists
                     case filelib:is_file(HandlerPath) of

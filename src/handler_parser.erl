@@ -22,7 +22,7 @@ maybe_op_from_clause(Line) ->
     end.
 
 locate_routes_block(Text) ->
-    case re:run(Text, "routes\\(\\) ->([\\s\\S]*?)\n\\]\\.", [{capture, [1], list}, dotall]) of
+    case re:run(Text, "routes\\(\\) ->([\\s\\S]*?)\\s*\\]\\.", [{capture, [1], list}, dotall]) of
         {match, [Block]} -> {ok, Block};
         _ -> {error, routes_block_not_found}
     end.
@@ -30,7 +30,7 @@ locate_routes_block(Text) ->
 extract_routes(Block) ->
     %% naive extraction: collect pairs (path, method, opId)
     PathRe = "path\\s*=>\\s*\"([^\"]+)\"",
-    MethRe = "<<\\\"([A-Z]+)\\\">>\\s*=>",
+    MethRe = "<<\\\"([A-Za-z]+)\\\">>\\s*=>",  % Accept both uppercase and lowercase
     OpRe = "operation_id\\s*=>\\s*'([^']+)'",
     Lines = string:tokens(Block, "\n"),
     extract_loop(Lines, undefined, [], PathRe, MethRe, OpRe).

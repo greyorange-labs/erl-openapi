@@ -1,0 +1,143 @@
+{
+  "operation_id": "DISABLE-DEBUG-LOGGING",
+  "path": "/api/butler_shared/v1/logging/debug/disable",
+  "method": "POST",
+  "summary": "Disable debug logging",
+  "description": "Disables debug logging and returns the system to normal logging levels.\n\n**Permissions:** `logging:write` or `admin`",
+  "tags": ["Debug Logging"],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "description": "Reason for disabling (for audit trail)",
+              "minLength": 10,
+              "maxLength": 500,
+              "example": "Troubleshooting session completed"
+            },
+            "source": {
+              "type": "string",
+              "description": "Source system requesting this operation",
+              "example": "monitoring-dashboard"
+            },
+            "user_id": {
+              "type": "string",
+              "description": "ID of user performing this operation",
+              "example": "user-12345"
+            }
+          }
+        },
+        "example": {
+          "reason": "Debug session completed - issue resolved",
+          "source": "ops-dashboard",
+          "user_id": "user-12345"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "Debug logging successfully disabled",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["status", "timestamp"],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["success", "already_disabled"],
+                "example": "success"
+              },
+              "message": {
+                "type": "string",
+                "example": "Debug logging disabled successfully"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2025-11-01T10:30:00Z"
+              },
+              "previous_state": {
+                "type": "object",
+                "description": "Info about the previous debug session",
+                "properties": {
+                  "enabled_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "enabled_by": {
+                    "type": "string"
+                  },
+                  "duration_seconds": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "example": {
+            "status": "success",
+            "message": "Debug logging disabled successfully",
+            "timestamp": "2025-11-01T10:30:00Z",
+            "previous_state": {
+              "enabled_at": "2025-11-01T09:00:00Z",
+              "enabled_by": "user-12345",
+              "duration_seconds": 5400
+            }
+          }
+        }
+      }
+    },
+    "400": {
+      "description": "Invalid request parameters",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "example": {
+            "error": "validation_error",
+            "message": "Field 'reason' is required"
+          }
+        }
+      }
+    },
+    "401": {
+      "description": "Authentication required",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
+    },
+    "403": {
+      "description": "Insufficient permissions",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
+    },
+    "500": {
+      "description": "Internal server error",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
+    }
+  }
+}
+

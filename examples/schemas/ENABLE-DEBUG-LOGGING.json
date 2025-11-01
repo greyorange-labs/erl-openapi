@@ -1,0 +1,168 @@
+{
+  "operation_id": "ENABLE-DEBUG-LOGGING",
+  "path": "/api/butler_shared/v1/logging/debug/enable",
+  "method": "POST",
+  "summary": "Enable debug logging",
+  "description": "Enables debug logging with optional auto-disable after TTL expires.\n\n**Permissions:** `logging:write` or `admin`\n\n**Note:** Debug logging may impact system performance.",
+  "tags": ["Debug Logging"],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "ttl": {
+              "type": "integer",
+              "description": "Auto-disable after this many seconds (optional)",
+              "minimum": 60,
+              "maximum": 86400,
+              "example": 3600
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason for enabling (recommended for audit)",
+              "minLength": 10,
+              "maxLength": 500,
+              "example": "Investigating API performance issue"
+            },
+            "level": {
+              "type": "string",
+              "description": "Debug level",
+              "enum": ["debug", "trace"],
+              "default": "debug"
+            },
+            "user_id": {
+              "type": "string",
+              "description": "ID of user enabling debug logging",
+              "example": "user-54321"
+            }
+          }
+        },
+        "examples": {
+          "with_ttl": {
+            "summary": "With 1-hour auto-disable",
+            "value": {
+              "ttl": 3600,
+              "reason": "Investigating slow API responses",
+              "level": "debug",
+              "user_id": "user-54321"
+            }
+          },
+          "without_ttl": {
+            "summary": "Manual disable required",
+            "value": {
+              "reason": "Extended troubleshooting session",
+              "level": "debug"
+            }
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "Debug logging successfully enabled",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["status", "timestamp"],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["enabled", "already_enabled"],
+                "example": "enabled"
+              },
+              "message": {
+                "type": "string",
+                "example": "Debug logging enabled successfully"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2025-11-01T10:30:00Z"
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When logging will auto-disable (if TTL specified)",
+                "example": "2025-11-01T11:30:00Z"
+              },
+              "level": {
+                "type": "string",
+                "example": "debug"
+              }
+            }
+          },
+          "examples": {
+            "with_ttl": {
+              "summary": "Enabled with TTL",
+              "value": {
+                "status": "enabled",
+                "message": "Debug logging enabled for 1 hour",
+                "timestamp": "2025-11-01T10:30:00Z",
+                "expires_at": "2025-11-01T11:30:00Z",
+                "level": "debug"
+              }
+            },
+            "without_ttl": {
+              "summary": "Enabled without TTL",
+              "value": {
+                "status": "enabled",
+                "message": "Debug logging enabled (manual disable required)",
+                "timestamp": "2025-11-01T10:30:00Z",
+                "level": "debug"
+              }
+            }
+          }
+        }
+      }
+    },
+    "400": {
+      "description": "Invalid request parameters",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "example": {
+            "error": "validation_error",
+            "message": "Field 'ttl' must be between 60 and 86400"
+          }
+        }
+      }
+    },
+    "401": {
+      "description": "Authentication required",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
+    },
+    "403": {
+      "description": "Insufficient permissions",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
+    },
+    "500": {
+      "description": "Internal server error",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
+    }
+  }
+}
+
