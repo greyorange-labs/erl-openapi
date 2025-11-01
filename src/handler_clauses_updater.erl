@@ -26,7 +26,7 @@ update(#{handler_path := HandlerPath, dry_run := DryRun}, Openapi) ->
 
 split_before_catch_all(Text) ->
     case re:run(Text, "\nhandle_request\\(OperationId,", [{capture, first, index}]) of
-        {match, {Start, _Len}} ->
+        {match, [{Start, _Len}]} ->
             Prefix = lists:sublist(Text, Start),
             Suffix = lists:nthtail(Start, Text),
             {Prefix, Suffix};
@@ -34,13 +34,16 @@ split_before_catch_all(Text) ->
     end.
 
 clause_text(#{operation_id := OpId}) ->
-    OpStr = binary_to_list(OpId),
+    OpStr = to_list(OpId),
     string:join([
         "\n",
-        "handle_request('\"" ++ OpStr ++ "\"', #{decoded_req_body := ReqBody} = _Req, _Context) ->\n",
+        "handle_request('" ++ OpStr ++ "', #{decoded_req_body := ReqBody} = _Req, _Context) ->\n",
         "    %% TODO: Uncomment following, adding relevant business logic or calling relevant logic/resource handler function \n",
         "    %% {Code, RespBody} = bsh_logging_http_controller:disable_debug(ReqBody),\n",
         "    Code = 501,\n",
         "    RespBody = #{message => <<\"Yet to be implemented\">>},\n",
         "    {Code, RespBody};\n"
     ], "").
+
+to_list(B) when is_binary(B) -> binary_to_list(B);
+to_list(L) when is_list(L) -> L.

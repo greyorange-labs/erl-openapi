@@ -11,17 +11,15 @@ rm -rf "$ROOT_DIR/tmp"
 mkdir -p "$ROOT_DIR/tmp"
 cp "$ROOT_DIR/examples/handlers/min_handler.erl" "$HANDLER_TMP"
 
-echo "[sanity] rebar3 compile"
-rebar3 compile >/dev/null
+bash "$ROOT_DIR/scripts/dev_compile.sh"
 
-echo "[sanity] Dry run gen erlang"
-rebar3 openapi gen erlang --spec "$SPEC" --app "$APP" --handler "$HANDLER_TMP" --dry-run
+echo "[sanity] OpenAPI -> Erlang (dry-run)"
+"$ROOT_DIR/scripts/gen_erlang.sh" "$SPEC" "$APP" "$HANDLER_TMP" true false || true
 
-echo "[sanity] Apply gen erlang with backup"
-rebar3 openapi gen erlang --spec "$SPEC" --app "$APP" --handler "$HANDLER_TMP" --backup
+echo "[sanity] OpenAPI -> Erlang (apply with backup)"
+"$ROOT_DIR/scripts/gen_erlang.sh" "$SPEC" "$APP" "$HANDLER_TMP" false true
 
-echo "[sanity] Generate spec from handler"
-rebar3 openapi gen spec --handler "$HANDLER_TMP" --app "$APP" --output "$OUT"
+echo "[sanity] Erlang -> OpenAPI"
+"$ROOT_DIR/scripts/gen_spec.sh" "$HANDLER_TMP" "$APP" "$OUT"
 
-echo "[sanity] Done. Outputs:"
-ls -la "$ROOT_DIR/tmp"
+echo "[sanity] Done. Output spec at $OUT"

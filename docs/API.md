@@ -17,7 +17,7 @@ rebar3 openapi gen erlang \
 Stub format:
 ```
 handle_request('NEW-OPS-ID', #{decoded_req_body := ReqBody} = _Req, _Context) ->
-    %% TODO: Uncomment following, adding relevant business logic or calling relevant logic/resource handler function 
+    %% TODO: Uncomment following, adding relevant business logic or calling relevant logic/resource handler function
     %% {Code, RespBody} = bsh_logging_http_controller:disable_debug(ReqBody),
     Code = 501,
     RespBody = #{message => <<"Yet to be implemented">>}

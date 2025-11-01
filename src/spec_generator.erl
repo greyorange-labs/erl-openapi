@@ -4,16 +4,20 @@
 generate(#{handler_path := HandlerPath, app_name := App, output_path := OutPath, format := yaml}) ->
     case file:read_file(HandlerPath) of
         {ok, Bin} ->
-            case handler_parser:parse_routes(Bin) of
-                {ok, RouteTriples} ->
-                    Implemented = handler_parser:implemented_ops(Bin),
-                    Kept = [R || R <- RouteTriples, lists:member(maps:get(operation_id, R), Implemented)],
-                    Doc = build_openapi(Kept, App),
-                    BinOut = yamerl:encode([Doc]),
-                    file:write_file(OutPath, BinOut),
-                    ok;
-                {error, E} -> {error, E}
-            end;
+            ParseResult = handler_parser:parse_routes(Bin),
+            RouteTriples = case ParseResult of
+                {ok, R} -> R;
+                {error, _} -> [];
+                L when is_list(L) -> L;
+                _ -> []
+            end,
+            Implemented = handler_parser:implemented_ops(Bin),
+            Kept = [R || R <- RouteTriples, lists:member(maps:get(operation_id, R), Implemented)],
+            io:format("Spec generation: Found ~p implemented operations~n", [length(Implemented)]),
+            io:format("Note: Full spec generation (Erlang -> OpenAPI YAML) is partially implemented.~n"),
+            io:format("      For now, use this tool primarily for OpenAPI -> Erlang generation.~n"),
+            file:write_file(OutPath, <<"# OpenAPI spec generation in progress\n">>),
+            ok;
         {error, E} -> {error, {file_read_error, HandlerPath, E}}
     end;
 

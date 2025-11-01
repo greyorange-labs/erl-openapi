@@ -22,7 +22,7 @@ maybe_op_from_clause(Line) ->
     end.
 
 locate_routes_block(Text) ->
-    case re:run(Text, "routes\\\(\\\) ->([\\s\\S]*?)\\n\\]\\.", [{capture, [1], list}, dotall]) of
+    case re:run(Text, "routes\\(\\) ->([\\s\\S]*?)\n\\]\\.", [{capture, [1], list}, dotall]) of
         {match, [Block]} -> {ok, Block};
         _ -> {error, routes_block_not_found}
     end.
@@ -33,10 +33,10 @@ extract_routes(Block) ->
     MethRe = "<<\\\"([A-Z]+)\\\">>\\s*=>",
     OpRe = "operation_id\\s*=>\\s*'([^']+)'",
     Lines = string:tokens(Block, "\n"),
-    extract_loop(Lines, undefined, []).
+    extract_loop(Lines, undefined, [], PathRe, MethRe, OpRe).
 
-extract_loop([], _CurrPath, Acc) -> lists:reverse(Acc);
-extract_loop([Line|Rest], CurrPath, Acc) ->
+extract_loop([], _CurrPath, Acc, _PathRe, _MethRe, _OpRe) -> lists:reverse(Acc);
+extract_loop([Line|Rest], CurrPath, Acc, PathRe, MethRe, OpRe) ->
     NewPath = case re:run(Line, PathRe, [{capture, [1], list}]) of
         {match, [P]} -> list_to_binary(P);
         _ -> CurrPath
@@ -46,14 +46,14 @@ extract_loop([Line|Rest], CurrPath, Acc) ->
         _ -> undefined
     end,
     case Method of
-        undefined -> extract_loop(Rest, NewPath, Acc);
+        undefined -> extract_loop(Rest, NewPath, Acc, PathRe, MethRe, OpRe);
         _ ->
             %% find op id on same or following lines (up to 3 lines lookahead)
             {Op, Rem2} = find_opid([Line|Rest], OpRe),
             case {NewPath, Op} of
-                {undefined, _} -> extract_loop(Rest, NewPath, Acc);
-                {_, undefined} -> extract_loop(Rest, NewPath, Acc);
-                _ -> extract_loop(Rem2, NewPath, [#{path=>NewPath, method=>Method, operation_id=>Op} | Acc])
+                {undefined, _} -> extract_loop(Rest, NewPath, Acc, PathRe, MethRe, OpRe);
+                {_, undefined} -> extract_loop(Rest, NewPath, Acc, PathRe, MethRe, OpRe);
+                _ -> extract_loop(Rem2, NewPath, [#{path=>NewPath, method=>Method, operation_id=>Op} | Acc], PathRe, MethRe, OpRe)
             end
     end.
 

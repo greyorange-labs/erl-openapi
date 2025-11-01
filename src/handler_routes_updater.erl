@@ -11,7 +11,13 @@ update(#{handler_path := HandlerPath, dry_run := DryRun}, Openapi) ->
                     %% Skip those already present
                     ExistingOps = existing_opids(Text),
                     ToAdd = [Op || Op <- Ops, not lists:member(maps:get(operation_id, Op), ExistingOps)],
-                    AddText = string:join([route_entry(Op) || Op <- ToAdd], ",\n") ++ trailer_comment(length(ToAdd)),
+                    %% Check if list is empty to decide whether to prepend comma
+                    ListEmpty = is_empty_list(Prefix),
+                    Sep = case ListEmpty of true -> "\n"; false -> ",\n" end,
+                    AddText = case ToAdd of
+                        [] -> "";
+                        _ -> Sep ++ string:join([route_entry(Op) || Op <- ToAdd], ",\n") ++ trailer_comment(length(ToAdd))
+                    end,
                     NewText = Prefix ++ AddText ++ Suffix,
                     Diff = diff_preview:unified(Text, NewText, HandlerPath),
                     case DryRun of
@@ -29,16 +35,26 @@ existing_opids(Text) ->
         _ -> []
     end.
 
+is_empty_list(Prefix) ->
+    %% Check if the list between [ and current position has any non-whitespace
+    case re:run(Prefix, "\\[\\s*$") of
+        {match, _} -> true;
+        _ -> false
+    end.
+
 locate_routes_end(Text) ->
-    case re:run(Text, "routes\\\(\\\) ->([\\s\\S]*?)\\n\\]\\.", [{capture, [1], list}, dotall]) of
-        {match, [Block]} ->
-            {ok, StartIdx} = binary:match(list_to_binary(Text), list_to_binary(Block)),
-            BlockStart = StartIdx,
-            BodyEndIdx = BlockStart + length(Block),
-            Prefix = lists:sublist(Text, BodyEndIdx),
-            SuffixStart = BodyEndIdx + 1,
-            Suffix = lists:nthtail(BodyEndIdx, Text),
-            {ok, Prefix, Suffix};
+    %% Find routes() -> ... ]. pattern
+    case re:run(Text, "routes\\(\\)\\s*->\\s*\\[([\\s\\S]*?)\\]\\.", [{capture, [0, 1], list}]) of
+        {match, [FullMatch, InsideList]} ->
+            %% Find where the closing ] is
+            case string:str(Text, "]." ) of
+                0 -> {error, routes_block_not_found};
+                Pos ->
+                    %% Split before the ]
+                    Prefix = lists:sublist(Text, Pos - 1),
+                    Suffix = lists:nthtail(Pos - 1, Text),
+                    {ok, Prefix, Suffix}
+            end;
         _ -> {error, routes_block_not_found}
     end.
 
@@ -59,6 +75,6 @@ has_request_body(Def) ->
         _ -> true
     end.
 
-trailer_comment(0) -> "";
+trailer_comment(0) -> "\n";
 trailer_comment(_N) ->
-    "\n        %% AUTO-GENERATED: appended routes at end of routes/0; move near related group if desired".
+    "\n        %% AUTO-GENERATED: appended routes at end of routes/0; move near related group if desired\n".

@@ -14,10 +14,16 @@ write_one(App, #{operation_id := OpId, def := Def}) ->
     file:write_file(File, Json).
 
 filename(OpId) when is_binary(OpId) ->
-    filename:basename(binary_to_list(OpId)) ++ ".json".
+    filename:basename(binary_to_list(OpId)) ++ ".json";
+filename(OpId) when is_list(OpId) ->
+    filename:basename(OpId) ++ ".json".
 
 ensure_dir(Dir) ->
     case filelib:is_dir(Dir) of
         true -> ok;
-        false -> file:make_dir_p(Dir)
+        false ->
+            %% filelib:ensure_dir needs a file path, not dir path
+            %% So we create the dir recursively using filelib:ensure_dir on a dummy file
+            ok = filelib:ensure_dir(filename:join(Dir, "dummy")),
+            ok
     end.
