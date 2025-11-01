@@ -1,1 +1,0 @@
-{"request":{"$schema":"http://json-schema.org/draft-04/schema#","properties":{"level":{"type":"string"}},"required":["level"],"type":"object"},"responses":{"200":"undefined"}}

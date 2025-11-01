@@ -1,1 +1,0 @@
-{"request":{"$schema":"http://json-schema.org/draft-04/schema#","properties":{"ttl":{"type":"integer"}},"type":"object"},"responses":{"200":"undefined"}}
