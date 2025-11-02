@@ -62,11 +62,9 @@ default_metadata() ->
         <<"info">> => #{
             <<"title">> => <<"API">>,
             <<"version">> => <<"1.0.0">>
-        },
-        <<"servers">> => [],
-        <<"security">> => [],
-        <<"tags">> => [],
-        <<"components">> => #{}
+        }
+        %% Don't include empty servers, security, tags, or components
+        %% They are optional and will be omitted if empty
     }.
 
 filename(OpId) when is_binary(OpId) ->

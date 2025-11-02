@@ -18,7 +18,7 @@ write(OpenapiMap, OutputPath) ->
 map_to_yaml(Map, Indent) when is_map(Map) ->
     IndentStr = lists:duplicate(Indent, $ ),
     case maps:size(Map) of
-        0 -> 
+        0 ->
             %% Empty map - don't return standalone {}, will be handled by parent
             "";
         _ ->
