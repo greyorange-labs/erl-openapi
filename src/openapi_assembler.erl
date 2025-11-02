@@ -60,17 +60,23 @@ build_operation(Schema) ->
         undefined -> 
             WithDeprecated;
         <<"undefined">> ->
+            %% Request is the string "undefined", no request body
             WithDeprecated;
-        RequestSchema ->
+        RequestSchema when is_map(RequestSchema) ->
+            %% Remove $schema field if present
+            CleanRequestSchema = maps:remove(<<"$schema">>, RequestSchema),
             ReqBody = #{
                 <<"required">> => true,
                 <<"content">> => #{
                     <<"application/json">> => #{
-                        <<"schema">> => RequestSchema
+                        <<"schema">> => CleanRequestSchema
                     }
                 }
             },
-            WithDeprecated#{<<"requestBody">> => ReqBody}
+            WithDeprecated#{<<"requestBody">> => ReqBody};
+        _ ->
+            %% Not a valid request schema
+            WithDeprecated
     end,
 
     %% Build responses from responses schema
@@ -80,24 +86,34 @@ build_operation(Schema) ->
             WithReqBody#{<<"responses">> => #{
                 <<"200">> => #{<<"description">> => <<"Success">>}
             }};
-        ResponsesMap ->
+        ResponsesMap when is_map(ResponsesMap) ->
             %% Convert response schemas to OpenAPI format
             OpenApiResponses = maps:fold(
-                fun(StatusCode, ResponseSchema, Acc) ->
+                fun(StatusCode, ResponseSchema, Acc) when is_map(ResponseSchema) ->
+                    %% Remove $schema field if present
+                    CleanResponseSchema = maps:remove(<<"$schema">>, ResponseSchema),
                     Response = #{
-                        <<"description">> => maps:get(<<"description">>, ResponseSchema, <<"Success">>),
+                        <<"description">> => maps:get(<<"description">>, CleanResponseSchema, <<"Success">>),
                         <<"content">> => #{
                             <<"application/json">> => #{
-                                <<"schema">> => ResponseSchema
+                                <<"schema">> => CleanResponseSchema
                             }
                         }
                     },
-                    Acc#{StatusCode => Response}
+                    Acc#{StatusCode => Response};
+                   (_StatusCode, _ResponseSchema, Acc) ->
+                    %% Skip invalid response schemas
+                    Acc
                 end,
                 #{},
                 ResponsesMap
             ),
-            WithReqBody#{<<"responses">> => OpenApiResponses}
+            WithReqBody#{<<"responses">> => OpenApiResponses};
+        _ ->
+            %% Invalid responses, add default
+            WithReqBody#{<<"responses">> => #{
+                <<"200">> => #{<<"description">> => <<"Success">>}
+            }}
     end,
 
     WithResponses.

@@ -57,7 +57,7 @@ combine_routes_with_schemas(Routes, SchemaMap) ->
         fun(Route) ->
             OpId = maps:get(operation_id, Route),
             OpIdBin = ensure_binary(OpId),
-            
+
             %% Look up schema for this operation_id
             case maps:get(OpIdBin, SchemaMap, undefined) of
                 undefined ->

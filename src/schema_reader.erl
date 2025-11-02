@@ -9,7 +9,7 @@ read_all(App, OperationIds) ->
         lists:filtermap(
             fun(OpId) ->
                 case read_one(Dir, OpId) of
-                    {ok, Schema} -> 
+                    {ok, Schema} ->
                         {true, {ensure_binary(OpId), Schema}};
                     {error, _} -> false
                 end
