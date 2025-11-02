@@ -77,11 +77,6 @@ route_entry(#{path := Path, method := Method, operation_id := OpId, def := Def})
             )
     end.
 
-content_types_suffix(true) ->
-    ", content_types_accepted => [{<<\"application\">>, <<\"json\">>, '*'}]";
-content_types_suffix(false) ->
-    "".
-
 has_request_body(Def) ->
     case maps:get(<<"requestBody">>, Def, undefined) of
         undefined -> false;

@@ -96,9 +96,6 @@ route_entry(#{path := Path, method := Method, operation_id := OpId, def := Def})
 to_list(B) when is_binary(B) -> binary_to_list(B);
 to_list(L) when is_list(L) -> L.
 
-content_types_suffix(true) -> ", content_types_accepted => [{<<\"application\">>, <<\"json\">>, '*'}]";
-content_types_suffix(false) -> "".
-
 has_request_body(Def) ->
     case maps:get(<<"requestBody">>, Def, undefined) of
         undefined -> false;
