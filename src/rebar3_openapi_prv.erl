@@ -3,29 +3,47 @@
 
 -export([init/1, do/1, format_error/1]).
 
--define(PROVIDER, openapi).
+-define(PROVIDER_GEN_ERLANG, gen_erlang).
+-define(PROVIDER_GEN_SPEC, gen_spec).
+-define(NAMESPACE, openapi).
 -define(DEPS, [app_discovery]).
 
 init(State) ->
-    Provider = providers:create([
-        {name, ?PROVIDER},
+    Provider1 = providers:create([
+        {name, ?PROVIDER_GEN_ERLANG},
         {module, ?MODULE},
+        {namespace, ?NAMESPACE},
         {bare, true},
         {deps, ?DEPS},
-        {example, "rebar3 openapi gen erlang --spec path --handler path --app name [--dry-run] [--backup]"},
-        {short_desc, "OpenAPI code generation and synchronization"},
-        {desc, "Bidirectional sync between OpenAPI specs and Erlang handlers"},
+        {example, "rebar3 openapi gen_erlang --spec path --handler path --app name [--dry-run] [--backup]"},
+        {short_desc, "Generate Erlang handlers from OpenAPI spec"},
+        {desc, "Generate or update Erlang HTTP handlers from OpenAPI 3.x specifications"},
         {opts, [
             {spec, undefined, "spec", string, "Path to OpenAPI YAML file"},
             {handler, undefined, "handler", string, "Path to target handler .erl"},
             {app, undefined, "app", string, "App name for schema placement"},
-            {output, undefined, "output", string, "Output path for generated OpenAPI"},
             {dry_run, $d, "dry-run", boolean, "Preview changes without writing"},
-            {backup, $b, "backup", boolean, "Create .bak when modifying files"},
-            {format, undefined, "format", atom, "Output format: yaml|json (spec gen)"}
+            {backup, $b, "backup", boolean, "Create .bak when modifying files"}
         ]}
     ]),
-    {ok, rebar_state:add_provider(State, Provider)}.
+    Provider2 = providers:create([
+        {name, ?PROVIDER_GEN_SPEC},
+        {module, ?MODULE},
+        {namespace, ?NAMESPACE},
+        {bare, true},
+        {deps, ?DEPS},
+        {example, "rebar3 openapi gen_spec --handler path --app name --output path [--format yaml|json]"},
+        {short_desc, "Generate OpenAPI spec from Erlang handlers"},
+        {desc, "Generate OpenAPI 3.x specification from Erlang HTTP handlers"},
+        {opts, [
+            {handler, undefined, "handler", string, "Path to handler .erl"},
+            {app, undefined, "app", string, "App name"},
+            {output, undefined, "output", string, "Output path for generated OpenAPI"},
+            {format, undefined, "format", atom, "Output format: yaml|json"}
+        ]}
+    ]),
+    State1 = rebar_state:add_provider(State, Provider1),
+    {ok, rebar_state:add_provider(State1, Provider2)}.
 
 format_error(Reason) ->
     case Reason of
@@ -38,38 +56,32 @@ format_error(Reason) ->
         Other -> io_lib:format("~p", [Other])
     end.
 
-%% Entry point
+%% Entry point - detects which provider is being called
 do(State) ->
     try
+        Provider = rebar_state:current_command(State),
         {Args, _} = rebar_state:command_parsed_args(State),
-        Command = rebar_state:command_args(State),
-        do_command(Command, Args, State)
+        Ctx = parse_opts_from_args(Args),
+
+        case Provider of
+            "gen_erlang" ->
+                case validate_codegen_inputs(Ctx) of
+                    ok -> run_codegen(Ctx, State);
+                    {error, E} -> {error, E}
+                end;
+            "gen_spec" ->
+                case validate_specgen_inputs(Ctx) of
+                    ok -> run_specgen(Ctx, State);
+                    {error, E} -> {error, E}
+                end;
+            _ ->
+                {error, {unknown_provider, Provider}}
+        end
     catch
         Class:Err:Stack ->
             rebar_api:error("openapi provider failed: ~p:~p~n~p", [Class, Err, Stack]),
             {error, Err}
     end.
-
-%% Handle commands: gen erlang | gen spec
-do_command(["gen", "erlang"], Args, State) ->
-    Ctx = parse_opts_from_args(Args),
-    case validate_codegen_inputs(Ctx) of
-        ok -> run_codegen(Ctx, State);
-        {error, E} -> {error, E}
-    end;
-
-do_command(["gen", "spec"], Args, State) ->
-    Ctx = parse_opts_from_args(Args),
-    case validate_specgen_inputs(Ctx) of
-        ok -> run_specgen(Ctx, State);
-        {error, E} -> {error, E}
-    end;
-
-do_command(_, _, _) ->
-    rebar_api:info("Usage: rebar3 openapi gen <erlang|spec> [options]", []),
-    rebar_api:info("  gen erlang: Generate Erlang handlers from OpenAPI spec", []),
-    rebar_api:info("  gen spec: Generate OpenAPI spec from Erlang handlers", []),
-    {error, {usage, "Invalid command"}}.
 
 parse_opts_from_args(Args) ->
     #{
@@ -130,12 +142,12 @@ codegen_execute(Ctx = #{app_name := App, handler_path := Handler, dry_run := Dry
     Ops = openapi_validator:list_operations(Openapi),
     HandlerPath = binary_to_list(Handler),
     AppName = binary_to_list(App),
-    
+
     case DryRun of
         false -> case Backup of true -> backup_manager:backup_many([HandlerPath]); false -> ok end;
         true -> ok
     end,
-    
+
     %% Check if handler exists
     case filelib:is_file(HandlerPath) of
         false ->
@@ -161,7 +173,7 @@ codegen_execute(Ctx = #{app_name := App, handler_path := Handler, dry_run := Dry
             Diff = diff_preview:merge([RoutesDiff, ClausesDiff]),
             case DryRun of
                 true -> {dry_run, Diff};
-                false -> 
+                false ->
                     _ = code_formatter:format_file(HandlerPath),
                     ok
             end
