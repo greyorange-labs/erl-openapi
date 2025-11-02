@@ -34,21 +34,21 @@ init(State) ->
 do(State) ->
     try
         {Args, _} = rebar_state:command_parsed_args(State),
-        
+
         %% Extract and validate required arguments
         SpecPath = proplists:get_value(spec, Args),
         HandlerPath = proplists:get_value(handler, Args),
         AppName = proplists:get_value(app, Args),
         DryRun = proplists:get_value(dry_run, Args, false),
         Backup = proplists:get_value(backup, Args, false),
-        
+
         case validate_args(SpecPath, HandlerPath, AppName) of
             ok ->
                 rebar_api:info("Generating Erlang handler from OpenAPI spec...", []),
                 rebar_api:info("  Spec: ~s", [SpecPath]),
                 rebar_api:info("  Handler: ~s", [HandlerPath]),
                 rebar_api:info("  App: ~s", [AppName]),
-                
+
                 %% Call the generation logic
                 case generate_erlang(SpecPath, HandlerPath, AppName, DryRun, Backup) of
                     ok ->
@@ -100,11 +100,11 @@ generate_erlang(SpecPath, HandlerPath, AppName, DryRun, Backup) ->
             case openapi_validator:validate(Openapi) of
                 ok ->
                     Ops = openapi_validator:list_operations(Openapi),
-                    
+
                     %% Convert to string if binary
                     HandlerPathStr = binary_to_list_safe(HandlerPath),
                     AppNameStr = binary_to_list_safe(AppName),
-                    
+
                     %% Create backup if requested and not dry-run
                     case DryRun of
                         false when Backup ->
@@ -114,7 +114,7 @@ generate_erlang(SpecPath, HandlerPath, AppName, DryRun, Backup) ->
                             end;
                         _ -> ok
                     end,
-                    
+
                     %% Generate handler and schemas
                     case filelib:is_file(HandlerPathStr) of
                         false ->
@@ -148,7 +148,7 @@ generate_erlang(SpecPath, HandlerPath, AppName, DryRun, Backup) ->
                             end,
                             {ok, _, RoutesDiff} = handler_routes_updater:update(Ctx, Openapi),
                             {ok, _, ClausesDiff} = handler_clauses_updater:update(Ctx, Openapi),
-                            
+
                             case DryRun of
                                 true ->
                                     rebar_api:info("DRY RUN: Proposed changes:~n~s~n~s", [RoutesDiff, ClausesDiff]);

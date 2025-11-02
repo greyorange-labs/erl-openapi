@@ -33,20 +33,20 @@ init(State) ->
 do(State) ->
     try
         {Args, _} = rebar_state:command_parsed_args(State),
-        
+
         %% Extract and validate required arguments
         HandlerPath = proplists:get_value(handler, Args),
         AppName = proplists:get_value(app, Args),
         OutputPath = proplists:get_value(output, Args),
         Format = proplists:get_value(format, Args, yaml),
-        
+
         case validate_args(HandlerPath, AppName, OutputPath) of
             ok ->
                 rebar_api:info("Generating OpenAPI spec from Erlang handler...", []),
                 rebar_api:info("  Handler: ~s", [HandlerPath]),
                 rebar_api:info("  App: ~s", [AppName]),
                 rebar_api:info("  Output: ~s", [OutputPath]),
-                
+
                 %% Call the generation logic
                 case generate_spec(HandlerPath, AppName, OutputPath, Format) of
                     ok ->

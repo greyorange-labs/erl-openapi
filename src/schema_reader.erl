@@ -2,16 +2,20 @@
 -export([read_all/2, read_metadata/1]).
 
 %% Read all operation schema files from json_schemas directory
+%% Returns map of operation_id => schema content
 read_all(App, OperationIds) ->
     Dir = filename:join(["apps", App, "priv", "json_schemas"]),
-    lists:filtermap(
-        fun(OpId) ->
-            case read_one(Dir, OpId) of
-                {ok, Schema} -> {true, Schema};
-                {error, _} -> false
-            end
-        end,
-        OperationIds
+    maps:from_list(
+        lists:filtermap(
+            fun(OpId) ->
+                case read_one(Dir, OpId) of
+                    {ok, Schema} -> 
+                        {true, {ensure_binary(OpId), Schema}};
+                    {error, _} -> false
+                end
+            end,
+            OperationIds
+        )
     ).
 
 %% Read a single operation schema file
@@ -27,6 +31,10 @@ read_one(Dir, OpId) ->
             end;
         {error, E} -> {error, {file_read_error, File, E}}
     end.
+
+ensure_binary(B) when is_binary(B) -> B;
+ensure_binary(L) when is_list(L) -> list_to_binary(L);
+ensure_binary(A) when is_atom(A) -> atom_to_binary(A, utf8).
 
 %% Read global metadata file
 read_metadata(App) ->

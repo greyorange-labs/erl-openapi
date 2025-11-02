@@ -47,17 +47,60 @@ build_operation(Schema) ->
         OpId -> Base#{<<"operationId">> => OpId}
     end,
 
-    %% Add optional fields
+    %% Add optional top-level fields
     WithSummary = add_if_present(WithOpId, <<"summary">>, Schema),
     WithDesc = add_if_present(WithSummary, <<"description">>, Schema),
     WithTags = add_if_present(WithDesc, <<"tags">>, Schema),
     WithSecurity = add_if_present(WithTags, <<"security">>, Schema),
     WithParams = add_if_present(WithSecurity, <<"parameters">>, Schema),
-    WithReqBody = add_if_present(WithParams, <<"requestBody">>, Schema),
-    WithResponses = add_if_present(WithReqBody, <<"responses">>, Schema),
-    WithDeprecated = add_if_present(WithResponses, <<"deprecated">>, Schema),
+    WithDeprecated = add_if_present(WithParams, <<"deprecated">>, Schema),
 
-    WithDeprecated.
+    %% Build requestBody from request schema if present
+    WithReqBody = case maps:get(<<"request">>, Schema, undefined) of
+        undefined -> 
+            WithDeprecated;
+        <<"undefined">> ->
+            WithDeprecated;
+        RequestSchema ->
+            ReqBody = #{
+                <<"required">> => true,
+                <<"content">> => #{
+                    <<"application/json">> => #{
+                        <<"schema">> => RequestSchema
+                    }
+                }
+            },
+            WithDeprecated#{<<"requestBody">> => ReqBody}
+    end,
+
+    %% Build responses from responses schema
+    WithResponses = case maps:get(<<"responses">>, Schema, undefined) of
+        undefined ->
+            %% No responses defined, add default
+            WithReqBody#{<<"responses">> => #{
+                <<"200">> => #{<<"description">> => <<"Success">>}
+            }};
+        ResponsesMap ->
+            %% Convert response schemas to OpenAPI format
+            OpenApiResponses = maps:fold(
+                fun(StatusCode, ResponseSchema, Acc) ->
+                    Response = #{
+                        <<"description">> => maps:get(<<"description">>, ResponseSchema, <<"Success">>),
+                        <<"content">> => #{
+                            <<"application/json">> => #{
+                                <<"schema">> => ResponseSchema
+                            }
+                        }
+                    },
+                    Acc#{StatusCode => Response}
+                end,
+                #{},
+                ResponsesMap
+            ),
+            WithReqBody#{<<"responses">> => OpenApiResponses}
+    end,
+
+    WithResponses.
 
 %% Add field to map if present in source
 add_if_present(Map, Key, Source) ->
