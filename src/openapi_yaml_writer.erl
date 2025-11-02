@@ -23,11 +23,24 @@ map_to_yaml(Map, Indent) when is_map(Map) ->
             Lines = lists:map(
                 fun({K, V}) ->
                     KeyStr = to_string(K),
-                    ValueStr = value_to_yaml(V, Indent + 2),
-                    case is_multiline(ValueStr) of
-                        true ->
-                            io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, ValueStr]);
-                        false ->
+                    case V of
+                        SubMap when is_map(SubMap) ->
+                            %% Nested map - put on new lines
+                            SubYaml = map_to_yaml(SubMap, Indent + 2),
+                            io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml]);
+                        SubList when is_list(SubList) ->
+                            case is_string(SubList) of
+                                true ->
+                                    %% It's a string value
+                                    io_lib:format("~s~s: ~s", [IndentStr, KeyStr, format_string(SubList)]);
+                                false ->
+                                    %% It's a list - put on new lines
+                                    SubYaml = list_to_yaml(SubList, Indent + 2),
+                                    io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml])
+                            end;
+                        _ ->
+                            %% Simple value - same line
+                            ValueStr = value_to_yaml(V, Indent + 2),
                             io_lib:format("~s~s: ~s", [IndentStr, KeyStr, ValueStr])
                     end
                 end,
@@ -67,14 +80,24 @@ list_to_yaml([], _) ->
 list_to_yaml(List, Indent) ->
     IndentStr = lists:duplicate(Indent, $ ),
     Lines = lists:map(
-        fun(Item) ->
-            ItemStr = value_to_yaml(Item, Indent + 2),
-            case is_multiline(ItemStr) of
+        fun(Item) when is_map(Item) ->
+            %% Map item - put on new lines with proper indent
+            ItemYaml = map_to_yaml(Item, Indent + 2),
+            io_lib:format("~s-~n~s", [IndentStr, ItemYaml]);
+           (Item) when is_list(Item) ->
+            case is_string(Item) of
                 true ->
-                    io_lib:format("~s-~n~s", [IndentStr, ItemStr]);
+                    %% String item
+                    io_lib:format("~s- ~s", [IndentStr, format_string(Item)]);
                 false ->
-                    io_lib:format("~s- ~s", [IndentStr, ItemStr])
-            end
+                    %% Nested list
+                    ItemYaml = list_to_yaml(Item, Indent + 2),
+                    io_lib:format("~s-~n~s", [IndentStr, ItemYaml])
+            end;
+           (Item) ->
+            %% Simple value
+            ItemStr = value_to_yaml(Item, Indent + 2),
+            io_lib:format("~s- ~s", [IndentStr, ItemStr])
         end,
         List
     ),
@@ -95,10 +118,6 @@ format_string(Str) ->
         false ->
             Str
     end.
-
-%% Check if string representation is multiline
-is_multiline(Str) ->
-    string:str(Str, "\n") > 0.
 
 %% Check if list is a string
 is_string([]) -> true;

@@ -57,7 +57,7 @@ build_operation(Schema) ->
 
     %% Build requestBody from request schema if present
     WithReqBody = case maps:get(<<"request">>, Schema, undefined) of
-        undefined -> 
+        undefined ->
             WithDeprecated;
         <<"undefined">> ->
             %% Request is the string "undefined", no request body
