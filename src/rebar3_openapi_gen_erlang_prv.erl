@@ -77,6 +77,23 @@ format_error({yaml_parse_error, Err}) ->
     io_lib:format("Failed to parse OpenAPI YAML: ~p", [Err]);
 format_error({file_read_error, Path, Err}) ->
     io_lib:format("Failed to read file ~s: ~p", [Path, Err]);
+format_error({invalid_operation_id, #{path := Path, method := Method, operation_id := undefined, reason := missing_operation_id}}) ->
+    io_lib:format(
+        "ERROR: Missing operationId for ~s ~s~n"
+        "       All operations must have an operationId defined in camelCase format~n"
+        "       Example: operationId: createUser, getUserById, updateOrder",
+        [string:to_upper(binary_to_list(Method)), Path]
+    );
+format_error({invalid_operation_id, #{path := Path, method := Method, operation_id := OpId, reason := not_camel_case}}) ->
+    io_lib:format(
+        "ERROR: Invalid operationId '~s' for ~s ~s~n"
+        "       operationId must be in camelCase format~n"
+        "       - Must start with lowercase letter (a-z)~n"
+        "       - Can only contain letters (a-zA-Z) and numbers (0-9)~n"
+        "       - No hyphens, underscores, or spaces allowed~n"
+        "       Examples: createUser, getUserById, updateOrder, deleteItem",
+        [OpId, string:to_upper(binary_to_list(Method)), Path]
+    );
 format_error(Reason) ->
     io_lib:format("~p", [Reason]).
 
