@@ -16,27 +16,41 @@ write(OpenapiMap, OutputPath) ->
 
 %% Convert Erlang map to YAML string
 map_to_yaml(Map, Indent) when is_map(Map) ->
+    IndentStr = lists:duplicate(Indent, $ ),
     case maps:size(Map) of
-        0 -> "{}";
+        0 -> 
+            %% Empty map - don't return standalone {}, will be handled by parent
+            "";
         _ ->
-            IndentStr = lists:duplicate(Indent, $ ),
             Lines = lists:map(
                 fun({K, V}) ->
                     KeyStr = to_string(K),
                     case V of
                         SubMap when is_map(SubMap) ->
-                            %% Nested map - put on new lines
-                            SubYaml = map_to_yaml(SubMap, Indent + 2),
-                            io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml]);
+                            case maps:size(SubMap) of
+                                0 ->
+                                    %% Empty nested map - put on same line
+                                    io_lib:format("~s~s: {}", [IndentStr, KeyStr]);
+                                _ ->
+                                    %% Non-empty nested map - put on new lines
+                                    SubYaml = map_to_yaml(SubMap, Indent + 2),
+                                    io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml])
+                            end;
                         SubList when is_list(SubList) ->
                             case is_string(SubList) of
                                 true ->
                                     %% It's a string value
                                     io_lib:format("~s~s: ~s", [IndentStr, KeyStr, format_string(SubList)]);
                                 false ->
-                                    %% It's a list - put on new lines
-                                    SubYaml = list_to_yaml(SubList, Indent + 2),
-                                    io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml])
+                                    case SubList of
+                                        [] ->
+                                            %% Empty list
+                                            io_lib:format("~s~s: []", [IndentStr, KeyStr]);
+                                        _ ->
+                                            %% Non-empty list - put on new lines
+                                            SubYaml = list_to_yaml(SubList, Indent + 2),
+                                            io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml])
+                                    end
                             end;
                         _ ->
                             %% Simple value - same line
