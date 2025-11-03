@@ -5,7 +5,7 @@ Rebar3 plugin for bidirectional OpenAPI 3.x ↔ Erlang handler synchronization.
 ## Features
 
 - ✅ **Generate Erlang handlers** from OpenAPI 3.x specifications
-- ✅ **Update existing handlers** with new routes and function clauses  
+- ✅ **Update existing handlers** with new routes and function clauses
 - ✅ **Generate OpenAPI specs** from Erlang handlers and JSON schemas
 - ✅ **Auto-format code** with erlfmt
 - ✅ **Idempotent operations** - no duplicate routes or clauses

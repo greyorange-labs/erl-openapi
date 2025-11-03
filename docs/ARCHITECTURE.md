@@ -287,7 +287,7 @@ When updating an existing handler, new routes must not duplicate existing ones:
 insert_new_routes(ExistingRoutes, NewRoutes) ->
     %% Parse existing routes to extract paths + methods
     ExistingSignatures = extract_signatures(ExistingRoutes),
-    
+
     %% Filter new routes
     TrulyNewRoutes = lists:filter(
         fun(Route) ->
@@ -296,7 +296,7 @@ insert_new_routes(ExistingRoutes, NewRoutes) ->
         end,
         NewRoutes
     ),
-    
+
     %% Append to existing
     ExistingRoutes ++ TrulyNewRoutes.
 
@@ -313,7 +313,7 @@ New `handle_request/3` clauses must be inserted before the catch-all clause:
 find_insertion_point(FileContent, OperationId) ->
     %% Find the catch-all clause: handle_request(OperationId, _Req, Context)
     CatchAllPattern = "handle_request\\(OperationId,",
-    
+
     case re:run(FileContent, CatchAllPattern) of
         {match, [{Pos, _}]} ->
             %% Insert new clauses before this position
@@ -334,9 +334,9 @@ is_camel_case(OpId) when is_binary(OpId) ->
     is_camel_case(binary_to_list(OpId));
 is_camel_case([First | Rest]) when First >= $a, First =< $z ->
     %% Must start with lowercase letter
-    lists:all(fun(C) -> 
-        (C >= $a andalso C =< $z) orelse 
-        (C >= $A andalso C =< $Z) orelse 
+    lists:all(fun(C) ->
+        (C >= $a andalso C =< $z) orelse
+        (C >= $A andalso C =< $Z) orelse
         (C >= $0 andalso C =< $9)
     end, Rest);
 is_camel_case(_) ->
@@ -351,7 +351,7 @@ Custom YAML writer to handle proper indentation:
 %% In openapi_yaml_writer.erl
 map_to_yaml(Map, Indent) when is_map(Map) ->
     case maps:size(Map) of
-        0 -> 
+        0 ->
             "{}";  % Empty map on same line
         _ ->
             lists:flatten([

@@ -47,19 +47,58 @@ is_empty_list(Prefix) ->
     end.
 
 locate_routes_end(Text) ->
-    %% Find routes() -> ... ]. pattern
-    case re:run(Text, "routes\\(\\)\\s*->\\s*\\[([\\s\\S]*?)\\]\\.", [{capture, [0, 1], list}]) of
-        {match, [_FullMatch, _InsideList]} ->
-            %% Find where the closing ] is
-            case string:str(Text, "]." ) of
-                0 -> {error, routes_block_not_found};
-                Pos ->
-                    %% Split before the ]
-                    Prefix = lists:sublist(Text, Pos - 1),
-                    Suffix = lists:nthtail(Pos - 1, Text),
-                    {ok, Prefix, Suffix}
-            end;
-        _ -> {error, routes_block_not_found}
+    %% Find routes() function, skipping attributes (-spec, -doc, etc.) and comments
+    Lines = string:split(Text, "\n", all),
+    case find_routes_function_line(Lines, 0) of
+        {ok, StartIdx} ->
+            %% Found the "routes() ->" line, now find the list boundaries
+            find_list_boundaries(Text, Lines, StartIdx);
+        Error ->
+            Error
+    end.
+
+%% Find the line number where "routes() ->" appears (ignoring attributes and comments)
+find_routes_function_line([], _Idx) ->
+    {error, routes_block_not_found};
+find_routes_function_line([Line | Rest], Idx) ->
+    Trimmed = string:trim(Line, leading),
+    IsComment = string:prefix(Trimmed, "%") =/= nomatch,
+    IsAttribute = string:prefix(Trimmed, "-") =/= nomatch,
+    IsRoutesFunc = re:run(Trimmed, "^routes\\s*\\(\\s*\\)\\s*->", [{capture, none}]) =:= match,
+    
+    case IsRoutesFunc andalso not IsComment andalso not IsAttribute of
+        true -> {ok, Idx};
+        false -> find_routes_function_line(Rest, Idx + 1)
+    end.
+
+%% Find where to split (before the closing "].")
+find_list_boundaries(Text, Lines, StartIdx) ->
+    %% Get text from routes() line onward
+    RemainingLines = lists:nthtail(StartIdx, Lines),
+    RemainingText = string:join(RemainingLines, "\n"),
+    
+    %% Find the closing ]. in the remaining text
+    case re:run(RemainingText, "\\]\\.", [{capture, first, index}]) of
+        {match, [{ClosingPos, _Len}]} ->
+            %% Calculate absolute position in original text
+            PrefixLines = lists:sublist(Lines, StartIdx),
+            PrefixText = string:join(PrefixLines, "\n"),
+            PrefixLen = length(PrefixText),
+            
+            %% Add newline if there were prefix lines
+            AdjustedPrefixLen = case StartIdx > 0 of
+                true -> PrefixLen + 1; % +1 for the newline
+                false -> PrefixLen
+            end,
+            
+            AbsoluteClosingPos = AdjustedPrefixLen + ClosingPos,
+            
+            %% Split right before ].
+            Prefix = lists:sublist(Text, AbsoluteClosingPos),
+            Suffix = lists:nthtail(AbsoluteClosingPos, Text),
+            {ok, Prefix, Suffix};
+        _ ->
+            {error, routes_block_not_found}
     end.
 
 route_entry(#{path := Path, method := Method, operation_id := OpId, def := Def}) ->

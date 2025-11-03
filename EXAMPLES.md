@@ -37,7 +37,7 @@ paths:
                 type: array
                 items:
                   type: object
-    
+
     post:
       summary: Create user
       operationId: createUser
@@ -139,7 +139,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-  
+
   schemas:
     User:
       type: object
@@ -158,7 +158,7 @@ components:
         createdAt:
           type: string
           format: date-time
-    
+
     Error:
       type: object
       required: [error, message]
@@ -256,17 +256,17 @@ handle_request(getUserList, Req, _Context) ->
     %% Extract query parameters
     Limit = maps:get(<<"limit">>, Req, 20),
     Offset = maps:get(<<"offset">>, Req, 0),
-    
+
     %% Call business logic
     {ok, Users} = users_service:list_users(Limit, Offset),
-    
+
     {200, #{users => Users}};
 
 %% POST /api/v1/users - Create user
 handle_request(createUser, #{decoded_req_body := ReqBody} = _Req, _Context) ->
     Name = maps:get(<<"name">>, ReqBody),
     Email = maps:get(<<"email">>, ReqBody),
-    
+
     case users_service:create_user(Name, Email) of
         {ok, User} ->
             {201, User};
@@ -279,7 +279,7 @@ handle_request(createUser, #{decoded_req_body := ReqBody} = _Req, _Context) ->
 %% GET /api/v1/users/:userId - Get user by ID
 handle_request(getUserById, #{path_params := PathParams} = _Req, _Context) ->
     UserId = maps:get(<<"userId">>, PathParams),
-    
+
     case users_service:get_user(UserId) of
         {ok, User} ->
             {200, User};
@@ -290,7 +290,7 @@ handle_request(getUserById, #{path_params := PathParams} = _Req, _Context) ->
 %% PUT /api/v1/users/:userId - Update user
 handle_request(updateUser, #{path_params := PathParams, decoded_req_body := ReqBody} = _Req, _Context) ->
     UserId = maps:get(<<"userId">>, PathParams),
-    
+
     case users_service:update_user(UserId, ReqBody) of
         {ok, User} ->
             {200, User};
@@ -303,7 +303,7 @@ handle_request(updateUser, #{path_params := PathParams, decoded_req_body := ReqB
 %% DELETE /api/v1/users/:userId - Delete user
 handle_request(deleteUser, #{path_params := PathParams} = _Req, _Context) ->
     UserId = maps:get(<<"userId">>, PathParams),
-    
+
     case users_service:delete_user(UserId) of
         ok ->
             {204, #{}};
@@ -612,7 +612,7 @@ components:
         email:
           type: string
           format: email
-    
+
     Error:
       type: object
       required: [error, message]
@@ -621,7 +621,7 @@ components:
           type: string
         message:
           type: string
-        
+
     PaginatedResponse:
       type: object
       required: [data, total, limit, offset]

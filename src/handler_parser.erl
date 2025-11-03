@@ -15,14 +15,53 @@ implemented_ops(TextBin) when is_binary(TextBin) ->
     lists:usort(Ops).
 
 maybe_op_from_clause(Line) ->
-    %% matches: handle_request('OP-ID',
-    case re:run(Line, "handle_request\\('([^']+)'", [{capture, [1], list}]) of
-        {match, [Op]} -> [list_to_binary(Op)];
-        _ -> []
+    %% Skip commented lines
+    Trimmed = string:trim(Line, leading),
+    IsComment = string:prefix(Trimmed, "%") =/= nomatch,
+    
+    case IsComment of
+        true -> [];
+        false ->
+            %% matches: handle_request('OP-ID',
+            case re:run(Trimmed, "handle_request\\('([^']+)'", [{capture, [1], list}]) of
+                {match, [Op]} -> [list_to_binary(Op)];
+                _ -> []
+            end
     end.
 
 locate_routes_block(Text) ->
-    case re:run(Text, "routes\\(\\) ->([\\s\\S]*?)\\s*\\]\\.", [{capture, [1], list}, dotall]) of
+    %% Find routes() function, skipping attributes (-spec, -doc, etc.) and comments
+    Lines = string:split(Text, "\n", all),
+    case find_routes_function_line(Lines, 0) of
+        {ok, StartIdx} ->
+            %% Found the "routes() ->" line, now extract the list content
+            extract_list_from_position(Text, Lines, StartIdx);
+        Error ->
+            Error
+    end.
+
+%% Find the line number where "routes() ->" appears (ignoring attributes and comments)
+find_routes_function_line([], _Idx) ->
+    {error, routes_block_not_found};
+find_routes_function_line([Line | Rest], Idx) ->
+    Trimmed = string:trim(Line, leading),
+    IsComment = string:prefix(Trimmed, "%") =/= nomatch,
+    IsAttribute = string:prefix(Trimmed, "-") =/= nomatch,
+    IsRoutesFunc = re:run(Trimmed, "^routes\\s*\\(\\s*\\)\\s*->", [{capture, none}]) =:= match,
+    
+    case IsRoutesFunc andalso not IsComment andalso not IsAttribute of
+        true -> {ok, Idx};
+        false -> find_routes_function_line(Rest, Idx + 1)
+    end.
+
+%% Extract list content starting from the routes() -> line
+extract_list_from_position(_Text, Lines, StartIdx) ->
+    %% Get text from routes() line onward
+    RemainingLines = lists:nthtail(StartIdx, Lines),
+    RemainingText = string:join(RemainingLines, "\n"),
+    
+    %% Find the opening [ and closing ].
+    case re:run(RemainingText, "\\[([\\s\\S]*?)\\]\\.", [{capture, [1], list}, dotall, ungreedy]) of
         {match, [Block]} -> {ok, Block};
         _ -> {error, routes_block_not_found}
     end.
