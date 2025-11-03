@@ -1,0 +1,79 @@
+{
+  "method": "POST",
+  "operation_id": "createProduct",
+  "path": "/api/v1/products",
+  "requestBody": {
+    "content": {
+      "application/json": {
+        "schema": {
+          "properties": {
+            "category": {
+              "enum": [
+                "electronics",
+                "clothing",
+                "food"
+              ],
+              "type": "string"
+            },
+            "name": {
+              "minLength": 3,
+              "type": "string"
+            },
+            "price": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "name",
+            "price"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    "required": true
+  },
+  "responses": {
+    "201": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "price": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Product created"
+    },
+    "400": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "error": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Invalid input"
+    }
+  },
+  "summary": "Create a product"
+}

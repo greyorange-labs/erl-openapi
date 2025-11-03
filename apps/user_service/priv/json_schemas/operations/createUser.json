@@ -1,0 +1,38 @@
+{
+  "method": "POST",
+  "operation_id": "createUser",
+  "path": "/api/v1/users",
+  "requestBody": {
+    "content": {
+      "application/json": {
+        "schema": {
+          "$ref": "#/components/schemas/UserInput"
+        }
+      }
+    },
+    "required": true
+  },
+  "responses": {
+    "201": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/UserResponse"
+          }
+        }
+      },
+      "description": "User created successfully"
+    },
+    "400": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        }
+      },
+      "description": "Validation error"
+    }
+  },
+  "summary": "Create a new user"
+}

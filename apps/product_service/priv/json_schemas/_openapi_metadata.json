@@ -1,0 +1,15 @@
+{
+  "info": {
+    "description": "Simple API with inline schemas only",
+    "title": "Product Catalog API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.3",
+  "security": [],
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "tags": []
+}

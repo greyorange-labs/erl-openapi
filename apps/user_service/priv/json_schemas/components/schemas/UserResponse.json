@@ -1,0 +1,25 @@
+{
+  "properties": {
+    "address": {
+      "$ref": "#/components/schemas/Address"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "id": {
+      "example": "usr_123abc",
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string"
+    }
+  },
+  "type": "object"
+}

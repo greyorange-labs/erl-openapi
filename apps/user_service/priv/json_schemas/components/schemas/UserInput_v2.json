@@ -1,0 +1,40 @@
+{
+  "properties": {
+    "address": {
+      "$ref": "#/components/schemas/Address"
+    },
+    "email": {
+      "example": "user@example.com",
+      "format": "email",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 150,
+      "minLength": 3,
+      "type": "string"
+    },
+    "phoneNumber": {
+      "pattern": "^\\+?[1-9]\\d{1,14}$",
+      "type": "string"
+    },
+    "preferences": {
+      "$ref": "#/components/schemas/UserPreferences"
+    },
+    "role": {
+      "default": "user",
+      "enum": [
+        "admin",
+        "user",
+        "guest",
+        "superadmin"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "email",
+    "name",
+    "phoneNumber"
+  ],
+  "type": "object"
+}

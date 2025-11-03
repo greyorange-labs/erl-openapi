@@ -1,0 +1,38 @@
+{
+  "method": "GET",
+  "operation_id": "getUserById",
+  "parameters": [
+    {
+      "in": "path",
+      "name": "userId",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "path": "/api/v1/users/{userId}",
+  "responses": {
+    "200": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/UserResponse"
+          }
+        }
+      },
+      "description": "User details"
+    },
+    "404": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        }
+      },
+      "description": "User not found"
+    }
+  },
+  "summary": "Get user by ID"
+}

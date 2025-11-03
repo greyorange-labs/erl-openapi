@@ -1,0 +1,19 @@
+{
+  "properties": {
+    "language": {
+      "type": "string"
+    },
+    "notifications": {
+      "type": "boolean"
+    },
+    "theme": {
+      "enum": [
+        "light",
+        "dark",
+        "auto"
+      ],
+      "type": "string"
+    }
+  },
+  "type": "object"
+}

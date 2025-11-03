@@ -6,7 +6,7 @@
 read_all(App, OperationIds) ->
     BaseDir = filename:join(["apps", App, "priv", "json_schemas"]),
     OperationsDir = filename:join(BaseDir, "operations"),
-    
+
     %% Read operation files
     Operations = maps:from_list(
         lists:filtermap(
@@ -20,10 +20,10 @@ read_all(App, OperationIds) ->
             OperationIds
         )
     ),
-    
+
     %% Read component schemas
     Components = read_components(App),
-    
+
     {Operations, Components}.
 
 %% Read a single operation schema file from operations/ directory
@@ -48,7 +48,7 @@ ensure_binary(A) when is_atom(A) -> atom_to_binary(A, utf8).
 %% Returns map of SchemaName => SchemaBody
 read_components(App) ->
     ComponentsDir = filename:join(["apps", App, "priv", "json_schemas", "components", "schemas"]),
-    
+
     case filelib:is_dir(ComponentsDir) of
         false ->
             %% No components directory (inline schemas only)

@@ -12,7 +12,7 @@ assemble(_Routes, Schemas, Components, Metadata) ->
 
     %% Start with metadata and add paths
     WithPaths = Metadata#{<<"paths">> => Paths},
-    
+
     %% Add components.schemas if any exist
     case maps:size(Components) of
         0 ->
@@ -85,9 +85,9 @@ build_operation(Schema) ->
             WithDeprecated;
         {undefined, RequestSchema} when is_map(RequestSchema) ->
             %% Check if requestSchema is already in OpenAPI format
-            ReqIsOpenApiFormat = maps:is_key(<<"content">>, RequestSchema) orelse 
+            ReqIsOpenApiFormat = maps:is_key(<<"content">>, RequestSchema) orelse
                             maps:is_key(<<"required">>, RequestSchema),
-            
+
             case ReqIsOpenApiFormat of
                 true ->
                     %% Already in OpenAPI format
@@ -123,9 +123,9 @@ build_operation(Schema) ->
             OpenApiResponses = maps:fold(
                 fun(StatusCode, ResponseSchema, Acc) when is_map(ResponseSchema) ->
                     %% Check if already in OpenAPI format (has 'content' or 'description' at top level)
-                    RespIsOpenApiFormat = maps:is_key(<<"content">>, ResponseSchema) orelse 
+                    RespIsOpenApiFormat = maps:is_key(<<"content">>, ResponseSchema) orelse
                                          maps:is_key(<<"description">>, ResponseSchema),
-                    
+
                     Response = case RespIsOpenApiFormat of
                         true ->
                             %% Already in OpenAPI format, use as-is (just remove $schema if present)

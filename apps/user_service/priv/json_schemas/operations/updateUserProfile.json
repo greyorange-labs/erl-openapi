@@ -1,0 +1,38 @@
+{
+  "method": "PUT",
+  "operation_id": "updateUserProfile",
+  "parameters": [
+    {
+      "in": "path",
+      "name": "userId",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "path": "/api/v1/users/{userId}/profile",
+  "requestBody": {
+    "content": {
+      "application/json": {
+        "schema": {
+          "$ref": "#/components/schemas/UserInput_v2"
+        }
+      }
+    },
+    "required": true
+  },
+  "responses": {
+    "200": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/UserResponse_v2"
+          }
+        }
+      },
+      "description": "Profile updated"
+    }
+  },
+  "summary": "Update user profile"
+}

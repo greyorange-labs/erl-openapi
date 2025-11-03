@@ -1,0 +1,31 @@
+{
+  "properties": {
+    "address": {
+      "$ref": "#/components/schemas/Address"
+    },
+    "email": {
+      "example": "user@example.com",
+      "format": "email",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 100,
+      "minLength": 2,
+      "type": "string"
+    },
+    "role": {
+      "default": "user",
+      "enum": [
+        "admin",
+        "user",
+        "guest"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "email",
+    "name"
+  ],
+  "type": "object"
+}
