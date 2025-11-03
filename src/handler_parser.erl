@@ -18,7 +18,7 @@ maybe_op_from_clause(Line) ->
     %% Skip commented lines
     Trimmed = string:trim(Line, leading),
     IsComment = string:prefix(Trimmed, "%") =/= nomatch,
-    
+
     case IsComment of
         true -> [];
         false ->
@@ -48,7 +48,7 @@ find_routes_function_line([Line | Rest], Idx) ->
     IsComment = string:prefix(Trimmed, "%") =/= nomatch,
     IsAttribute = string:prefix(Trimmed, "-") =/= nomatch,
     IsRoutesFunc = re:run(Trimmed, "^routes\\s*\\(\\s*\\)\\s*->", [{capture, none}]) =:= match,
-    
+
     case IsRoutesFunc andalso not IsComment andalso not IsAttribute of
         true -> {ok, Idx};
         false -> find_routes_function_line(Rest, Idx + 1)
@@ -59,7 +59,7 @@ extract_list_from_position(_Text, Lines, StartIdx) ->
     %% Get text from routes() line onward
     RemainingLines = lists:nthtail(StartIdx, Lines),
     RemainingText = string:join(RemainingLines, "\n"),
-    
+
     %% Find the opening [ and closing ].
     case re:run(RemainingText, "\\[([\\s\\S]*?)\\]\\.", [{capture, [1], list}, dotall, ungreedy]) of
         {match, [Block]} -> {ok, Block};

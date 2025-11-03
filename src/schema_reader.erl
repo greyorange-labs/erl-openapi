@@ -1,14 +1,17 @@
 -module(schema_reader).
--export([read_all/2, read_metadata/1]).
+-export([read_all/2, read_metadata/1, read_components/1]).
 
-%% Read all operation schema files from json_schemas directory
-%% Returns map of operation_id => schema content
+%% Read all operation schema files and component schemas
+%% Returns {OperationsMap, ComponentsMap}
 read_all(App, OperationIds) ->
-    Dir = filename:join(["apps", App, "priv", "json_schemas"]),
-    maps:from_list(
+    BaseDir = filename:join(["apps", App, "priv", "json_schemas"]),
+    OperationsDir = filename:join(BaseDir, "operations"),
+    
+    %% Read operation files
+    Operations = maps:from_list(
         lists:filtermap(
             fun(OpId) ->
-                case read_one(Dir, OpId) of
+                case read_operation(OperationsDir, OpId) of
                     {ok, Schema} ->
                         {true, {ensure_binary(OpId), Schema}};
                     {error, _} -> false
@@ -16,10 +19,15 @@ read_all(App, OperationIds) ->
             end,
             OperationIds
         )
-    ).
+    ),
+    
+    %% Read component schemas
+    Components = read_components(App),
+    
+    {Operations, Components}.
 
-%% Read a single operation schema file
-read_one(Dir, OpId) ->
+%% Read a single operation schema file from operations/ directory
+read_operation(Dir, OpId) ->
     File = filename:join(Dir, filename(OpId)),
     case file:read_file(File) of
         {ok, Bin} ->
@@ -35,6 +43,44 @@ read_one(Dir, OpId) ->
 ensure_binary(B) when is_binary(B) -> B;
 ensure_binary(L) when is_list(L) -> list_to_binary(L);
 ensure_binary(A) when is_atom(A) -> atom_to_binary(A, utf8).
+
+%% Read all component schema files from components/schemas/ directory
+%% Returns map of SchemaName => SchemaBody
+read_components(App) ->
+    ComponentsDir = filename:join(["apps", App, "priv", "json_schemas", "components", "schemas"]),
+    
+    case filelib:is_dir(ComponentsDir) of
+        false ->
+            %% No components directory (inline schemas only)
+            #{};
+        true ->
+            %% List all .json files in components/schemas/
+            case file:list_dir(ComponentsDir) of
+                {ok, Files} ->
+                    JsonFiles = [F || F <- Files, filename:extension(F) =:= ".json"],
+                    maps:from_list(
+                        lists:filtermap(
+                            fun(FileName) ->
+                                SchemaName = filename:basename(FileName, ".json"),
+                                File = filename:join(ComponentsDir, FileName),
+                                case file:read_file(File) of
+                                    {ok, Bin} ->
+                                        try
+                                            SchemaBody = jsx:decode(Bin, [return_maps]),
+                                            {true, {list_to_binary(SchemaName), SchemaBody}}
+                                        catch
+                                            _:_ -> false
+                                        end;
+                                    {error, _} -> false
+                                end
+                            end,
+                            JsonFiles
+                        )
+                    );
+                {error, _} ->
+                    #{}
+            end
+    end.
 
 %% Read global metadata file
 read_metadata(App) ->

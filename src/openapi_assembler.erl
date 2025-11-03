@@ -1,18 +1,36 @@
 -module(openapi_assembler).
--export([assemble/3]).
+-export([assemble/3, assemble/4]).
 
-%% Assemble complete OpenAPI spec from handler routes, schemas, and metadata
+%% Assemble complete OpenAPI spec from handler routes, schemas, components, and metadata
 %% Routes: list of #{path, method, operation_id} (currently unused, paths extracted from schemas)
 %% Schemas: list of complete operation schema maps
+%% Components: map of component schemas (SchemaName => SchemaBody)
 %% Metadata: global OpenAPI metadata map
-assemble(_Routes, Schemas, Metadata) ->
+assemble(_Routes, Schemas, Components, Metadata) ->
     %% Build paths object from schemas
     Paths = build_paths(Schemas),
 
     %% Start with metadata and add paths
-    Metadata#{
-        <<"paths">> => Paths
-    }.
+    WithPaths = Metadata#{<<"paths">> => Paths},
+    
+    %% Add components.schemas if any exist
+    case maps:size(Components) of
+        0 ->
+            %% No components (inline schemas only)
+            WithPaths;
+        _ ->
+            %% Add components section
+            ExistingComponents = maps:get(<<"components">>, WithPaths, #{}),
+            WithPaths#{
+                <<"components">> => ExistingComponents#{
+                    <<"schemas">> => Components
+                }
+            }
+    end.
+
+%% Legacy version for backward compatibility
+assemble(Routes, Schemas, Metadata) ->
+    assemble(Routes, Schemas, #{}, Metadata).
 
 %% Build paths object from operation schemas
 build_paths(Schemas) ->
@@ -55,25 +73,38 @@ build_operation(Schema) ->
     WithParams = add_if_present(WithSecurity, <<"parameters">>, Schema),
     WithDeprecated = add_if_present(WithParams, <<"deprecated">>, Schema),
 
-    %% Build requestBody from request schema if present
-    WithReqBody = case maps:get(<<"request">>, Schema, undefined) of
-        undefined ->
+    %% Build requestBody from request/requestBody schema if present
+    WithReqBody = case {maps:get(<<"requestBody">>, Schema, undefined), maps:get(<<"request">>, Schema, undefined)} of
+        {undefined, undefined} ->
             WithDeprecated;
-        <<"undefined">> ->
+        {RequestBody, _} when is_map(RequestBody) ->
+            %% Already has requestBody in OpenAPI format, use as-is
+            WithDeprecated#{<<"requestBody">> => RequestBody};
+        {undefined, <<"undefined">>} ->
             %% Request is the string "undefined", no request body
             WithDeprecated;
-        RequestSchema when is_map(RequestSchema) ->
-            %% Remove $schema field if present
-            CleanRequestSchema = maps:remove(<<"$schema">>, RequestSchema),
-            ReqBody = #{
-                <<"required">> => true,
-                <<"content">> => #{
-                    <<"application/json">> => #{
-                        <<"schema">> => CleanRequestSchema
-                    }
-                }
-            },
-            WithDeprecated#{<<"requestBody">> => ReqBody};
+        {undefined, RequestSchema} when is_map(RequestSchema) ->
+            %% Check if requestSchema is already in OpenAPI format
+            ReqIsOpenApiFormat = maps:is_key(<<"content">>, RequestSchema) orelse 
+                            maps:is_key(<<"required">>, RequestSchema),
+            
+            case ReqIsOpenApiFormat of
+                true ->
+                    %% Already in OpenAPI format
+                    WithDeprecated#{<<"requestBody">> => RequestSchema};
+                false ->
+                    %% Bare schema, wrap in OpenAPI format
+                    CleanRequestSchema = maps:remove(<<"$schema">>, RequestSchema),
+                    ReqBody = #{
+                        <<"required">> => true,
+                        <<"content">> => #{
+                            <<"application/json">> => #{
+                                <<"schema">> => CleanRequestSchema
+                            }
+                        }
+                    },
+                    WithDeprecated#{<<"requestBody">> => ReqBody}
+            end;
         _ ->
             %% Not a valid request schema
             WithDeprecated
@@ -87,19 +118,30 @@ build_operation(Schema) ->
                 <<"200">> => #{<<"description">> => <<"Success">>}
             }};
         ResponsesMap when is_map(ResponsesMap) ->
-            %% Convert response schemas to OpenAPI format
+            %% Check if responses are already in OpenAPI format (have 'content' or 'description')
+            %% or if they need to be wrapped
             OpenApiResponses = maps:fold(
                 fun(StatusCode, ResponseSchema, Acc) when is_map(ResponseSchema) ->
-                    %% Remove $schema field if present
-                    CleanResponseSchema = maps:remove(<<"$schema">>, ResponseSchema),
-                    Response = #{
-                        <<"description">> => maps:get(<<"description">>, CleanResponseSchema, <<"Success">>),
-                        <<"content">> => #{
-                            <<"application/json">> => #{
-                                <<"schema">> => CleanResponseSchema
+                    %% Check if already in OpenAPI format (has 'content' or 'description' at top level)
+                    RespIsOpenApiFormat = maps:is_key(<<"content">>, ResponseSchema) orelse 
+                                         maps:is_key(<<"description">>, ResponseSchema),
+                    
+                    Response = case RespIsOpenApiFormat of
+                        true ->
+                            %% Already in OpenAPI format, use as-is (just remove $schema if present)
+                            maps:remove(<<"$schema">>, ResponseSchema);
+                        false ->
+                            %% Bare schema, wrap in OpenAPI format
+                            CleanResponseSchema = maps:remove(<<"$schema">>, ResponseSchema),
+                            #{
+                                <<"description">> => <<"Success">>,
+                                <<"content">> => #{
+                                    <<"application/json">> => #{
+                                        <<"schema">> => CleanResponseSchema
+                                    }
+                                }
                             }
-                        }
-                    },
+                    end,
                     Acc#{StatusCode => Response};
                    (_StatusCode, _ResponseSchema, Acc) ->
                     %% Skip invalid response schemas

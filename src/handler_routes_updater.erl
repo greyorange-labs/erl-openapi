@@ -65,7 +65,7 @@ find_routes_function_line([Line | Rest], Idx) ->
     IsComment = string:prefix(Trimmed, "%") =/= nomatch,
     IsAttribute = string:prefix(Trimmed, "-") =/= nomatch,
     IsRoutesFunc = re:run(Trimmed, "^routes\\s*\\(\\s*\\)\\s*->", [{capture, none}]) =:= match,
-    
+
     case IsRoutesFunc andalso not IsComment andalso not IsAttribute of
         true -> {ok, Idx};
         false -> find_routes_function_line(Rest, Idx + 1)
@@ -76,7 +76,7 @@ find_list_boundaries(Text, Lines, StartIdx) ->
     %% Get text from routes() line onward
     RemainingLines = lists:nthtail(StartIdx, Lines),
     RemainingText = string:join(RemainingLines, "\n"),
-    
+
     %% Find the closing ]. in the remaining text
     case re:run(RemainingText, "\\]\\.", [{capture, first, index}]) of
         {match, [{ClosingPos, _Len}]} ->
@@ -84,15 +84,15 @@ find_list_boundaries(Text, Lines, StartIdx) ->
             PrefixLines = lists:sublist(Lines, StartIdx),
             PrefixText = string:join(PrefixLines, "\n"),
             PrefixLen = length(PrefixText),
-            
+
             %% Add newline if there were prefix lines
             AdjustedPrefixLen = case StartIdx > 0 of
                 true -> PrefixLen + 1; % +1 for the newline
                 false -> PrefixLen
             end,
-            
+
             AbsoluteClosingPos = AdjustedPrefixLen + ClosingPos,
-            
+
             %% Split right before ].
             Prefix = lists:sublist(Text, AbsoluteClosingPos),
             Suffix = lists:nthtail(AbsoluteClosingPos, Text),

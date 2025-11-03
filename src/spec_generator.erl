@@ -22,16 +22,16 @@ generate(#{handler_path := HandlerPath, app_name := App, output_path := OutPath,
             %% Read metadata
             {ok, Metadata} = schema_reader:read_metadata(binary_to_list(App)),
 
-            %% Read all operation schemas (returns map of operation_id => schema)
-            SchemaMap = schema_reader:read_all(binary_to_list(App), OperationIds),
+            %% Read all operation schemas and component schemas
+            {SchemaMap, Components} = schema_reader:read_all(binary_to_list(App), OperationIds),
 
             io:format("Loaded ~p operation schemas~n", [maps:size(SchemaMap)]),
 
             %% Combine route information from handler with schema information from JSON files
             EnrichedOperations = combine_routes_with_schemas(Routes, SchemaMap),
 
-            %% Assemble complete OpenAPI spec
-            OpenapiSpec = openapi_assembler:assemble(Routes, EnrichedOperations, Metadata),
+            %% Assemble complete OpenAPI spec with components
+            OpenapiSpec = openapi_assembler:assemble(Routes, EnrichedOperations, Components, Metadata),
 
             %% Write as YAML
             case openapi_yaml_writer:write(OpenapiSpec, binary_to_list(OutPath)) of
