@@ -3,10 +3,10 @@
 
 validate(#{<<"openapi">> := _Version, <<"paths">> := Paths}) when is_map(Paths) ->
     case maps:size(Paths) > 0 of
-        true -> 
+        true ->
             %% Also validate all operationIds are defined and follow camelCase
             validate_operation_ids(Paths);
-        false -> 
+        false ->
             {error, {validation, empty_paths}}
     end;
 validate(_) ->
@@ -36,13 +36,13 @@ op_tuple(Path, Method, Def) ->
 %% Validate all operationIds are defined and follow camelCase convention
 validate_operation_ids(Paths) ->
     AllOps = lists:flatten([
-        ops_with_validation(Path, Methods) 
+        ops_with_validation(Path, Methods)
         || {Path, Methods} <- maps:to_list(Paths)
     ]),
-    
+
     %% Check if any operations are invalid
     case [Op || Op <- AllOps, is_invalid_op(Op)] of
-        [] -> 
+        [] ->
             ok;
         [FirstInvalid | _] ->
             %% Return the first error found
@@ -51,9 +51,9 @@ validate_operation_ids(Paths) ->
 
 %% Extract operations with validation info
 ops_with_validation(Path, Methods) when is_map(Methods) ->
-    [validate_single_operation(Path, Method, Def) 
-     || {Method, Def} <- maps:to_list(Methods), 
-        is_map(Def), 
+    [validate_single_operation(Path, Method, Def)
+     || {Method, Def} <- maps:to_list(Methods),
+        is_map(Def),
         is_http_method(Method)].
 
 %% Validate a single operation
@@ -91,9 +91,9 @@ is_camel_case(OpId) when is_binary(OpId) ->
     is_camel_case(binary_to_list(OpId));
 is_camel_case([First | Rest]) when First >= $a, First =< $z ->
     %% Starts with lowercase letter, check rest
-    lists:all(fun(C) -> 
-        (C >= $a andalso C =< $z) orelse 
-        (C >= $A andalso C =< $Z) orelse 
+    lists:all(fun(C) ->
+        (C >= $a andalso C =< $z) orelse
+        (C >= $A andalso C =< $Z) orelse
         (C >= $0 andalso C =< $9)
     end, Rest);
 is_camel_case(_) ->

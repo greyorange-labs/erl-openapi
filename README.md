@@ -1,93 +1,422 @@
-# erl-openapi
+# rebar3_openapi
 
-Rebar3 plugin for bidirectional OpenAPI ↔ Erlang handler sync.
+Rebar3 plugin for bidirectional OpenAPI 3.x ↔ Erlang handler synchronization.
 
 ## Features
 
-- ✅ **Generate complete handler modules** from OpenAPI 3.x YAML specs
-- ✅ **Update existing handlers** with new routes and handle_request clauses
-- ✅ **Draft-04 JSON schema artifacts** per `operationId` with proper formatting
-- ✅ **Auto-format generated code** using erlfmt
-- ✅ **Idempotent**: no duplicate routes or clauses
+- ✅ **Generate Erlang handlers** from OpenAPI 3.x specifications
+- ✅ **Update existing handlers** with new routes and function clauses  
+- ✅ **Generate OpenAPI specs** from Erlang handlers and JSON schemas
+- ✅ **Auto-format code** with erlfmt
+- ✅ **Idempotent operations** - no duplicate routes or clauses
+- ✅ **camelCase operationId enforcement** - validates naming conventions
 - ✅ **Dry-run mode** to preview changes
-- ✅ **Optional backup** before modifications
-- ⚠️ **Spec generation** (Erlang → OpenAPI) is partially implemented
+- ✅ **Optional backups** before modifications
 
-## Quickstart
+## Installation
 
-### 1. Generate a new handler from scratch
+### Add to Your Project
 
-If the handler file doesn't exist, it will be created automatically:
+Add to your `rebar.config`:
 
-```bash
-# Compile the plugin first
-rebar3 compile
+```erlang
+{deps, [
+    {rebar3_openapi, {git, "https://github.com/greyorange-labs/erl-openapi", {branch, "main"}}}
+]}.
 
-# Generate new handler (creates the file if it doesn't exist)
-bash scripts/gen_erlang.sh examples/specs/sample.yaml my_app src/my_handler.erl false false
+{plugins, [
+    {rebar3_openapi, {git, "https://github.com/greyorange-labs/erl-openapi", {branch, "main"}}}
+]}.
 ```
 
-This creates:
-- Complete handler module with `routes/0` and `handle_request/3` clauses
-- JSON Schema files in `apps/my_app/priv/json_schemas/`
-- Auto-formatted Erlang code
-
-### 2. Update an existing handler
-
-If the handler exists, it updates it with new routes:
+### Verify Installation
 
 ```bash
-# Dry-run first to see changes
-bash scripts/gen_erlang.sh path/to/updated_spec.yaml my_app src/my_handler.erl true false
-
-# Apply changes with backup
-bash scripts/gen_erlang.sh path/to/updated_spec.yaml my_app src/my_handler.erl false true
+rebar3 update
+rebar3 help openapi_gen_erlang
+rebar3 help openapi_gen_spec
 ```
 
-### 3. Run the sanity test
+## Quick Start
+
+### 1. Generate Handler from OpenAPI Spec
+
+Create a new handler or update an existing one:
 
 ```bash
-bash scripts/sanity_check.sh
+rebar3 openapi_gen_erlang \
+  --spec path/to/api.yaml \
+  --handler src/my_handler.erl \
+  --app my_app
 ```
 
-## Command Reference
+This will:
+- Create or update `src/my_handler.erl` with routes and function stubs
+- Generate JSON schema files in `apps/my_app/priv/json_schemas/`
+- Auto-format the generated code with erlfmt
 
-### Using scripts (recommended for testing)
+### 2. Generate OpenAPI Spec from Handler
+
+Create an OpenAPI spec from your implemented handler:
 
 ```bash
-# gen_erlang.sh <spec_path> <app_name> <handler_path> <dry_run> <backup>
-bash scripts/gen_erlang.sh examples/specs/sample.yaml my_app src/handler.erl false false
-
-# Arguments:
-#   spec_path    - Path to OpenAPI YAML file
-#   app_name     - Application name for schema placement
-#   handler_path - Path to handler file (created if doesn't exist)
-#   dry_run      - true|false (preview changes without writing)
-#   backup       - true|false (create .bak files)
+rebar3 openapi_gen_spec \
+  --handler src/my_handler.erl \
+  --app my_app \
+  --output docs/api.yaml
 ```
 
-### Using rebar3 plugin directly
+This will:
+- Parse routes from `routes/0` function
+- Read JSON schemas from `apps/my_app/priv/json_schemas/`
+- Generate complete OpenAPI 3.x YAML specification
+
+## Commands
+
+### openapi_gen_erlang
+
+Generate or update Erlang handler from OpenAPI specification.
 
 ```bash
-# From within your Erlang project that includes this plugin
-rebar3 openapi gen erlang \
-  --spec path/to/openapi.yaml \
-  --app your_app \
-  --handler path/to/handler.erl \
+rebar3 openapi_gen_erlang --spec <path> --handler <path> --app <name> [options]
+```
+
+**Required Arguments:**
+- `--spec <path>` - Path to OpenAPI YAML file
+- `--handler <path>` - Path to handler file (created if doesn't exist)
+- `--app <name>` - Application name for schema placement
+
+**Optional Arguments:**
+- `--dry-run` - Preview changes without writing files
+- `--backup` - Create `.bak` backup files before modifying
+
+**Examples:**
+
+```bash
+# Generate new handler
+rebar3 openapi_gen_erlang \
+  --spec specs/users_api.yaml \
+  --handler src/users_handler.erl \
+  --app my_app
+
+# Update existing handler with dry-run
+rebar3 openapi_gen_erlang \
+  --spec specs/users_api_v2.yaml \
+  --handler src/users_handler.erl \
+  --app my_app \
+  --dry-run
+
+# Update with backup
+rebar3 openapi_gen_erlang \
+  --spec specs/users_api_v2.yaml \
+  --handler src/users_handler.erl \
+  --app my_app \
   --backup
 ```
 
-## Flags
+### openapi_gen_spec
 
-- `--spec <path>`: Path to OpenAPI YAML file (required)
-- `--app <name>`: Application name for schema placement (required)
-- `--handler <path>`: Path to handler file (required, created if doesn't exist)
-- `--dry-run`: Preview changes without writing files
-- `--backup`: Create `.bak` files before modifying
-- `--format yaml|json`: Output format for spec generation (default: yaml)
+Generate OpenAPI specification from Erlang handler and JSON schemas.
 
-## Docs
-- See `docs/API.md` and `docs/ARCHITECTURE.md`.
+```bash
+rebar3 openapi_gen_spec --handler <path> --app <name> --output <path> [options]
+```
+
+**Required Arguments:**
+- `--handler <path>` - Path to handler file to parse
+- `--app <name>` - Application name for schema lookup
+- `--output <path>` - Output path for generated OpenAPI spec
+
+**Optional Arguments:**
+- `--format yaml|json` - Output format (default: yaml)
+
+**Examples:**
+
+```bash
+# Generate YAML spec
+rebar3 openapi_gen_spec \
+  --handler src/users_handler.erl \
+  --app my_app \
+  --output docs/users_api.yaml
+
+# Generate JSON spec
+rebar3 openapi_gen_spec \
+  --handler src/users_handler.erl \
+  --app my_app \
+  --output docs/users_api.json \
+  --format json
+```
+
+## operationId Naming Convention
+
+**All operationIds must be in camelCase format:**
+- ✅ Start with lowercase letter (a-z)
+- ✅ Only letters (a-zA-Z) and numbers (0-9)
+- ❌ No hyphens, underscores, or special characters
+
+**Valid Examples:**
+- `getUsers`
+- `createUser`
+- `getUserById`
+- `updateOrder`
+- `deleteItem`
+
+**Invalid Examples:**
+- ❌ `get-users` (kebab-case)
+- ❌ `get_users` (snake_case)
+- ❌ `GetUsers` (PascalCase)
+- ❌ `GET-USERS` (SCREAMING-CAPS)
+
+The tool will validate operationIds and provide helpful error messages if they don't follow the convention.
+
+## File Structure
+
+### Generated Handler Module
+
+```erlang
+-module(my_handler).
+-export([routes/0, handle_request/3]).
+
+routes() ->
+    [
+        #{
+            path => "/api/v1/users",
+            allowed_methods => #{
+                <<"get">> => #{operation_id => getUserList}
+            }
+        },
+        #{
+            path => "/api/v1/users",
+            allowed_methods => #{
+                <<"post">> => #{
+                    operation_id => createUser,
+                    content_types_accepted => [{<<"application">>, <<"json">>, '*'}]
+                }
+            }
+        }
+    ].
+
+handle_request(getUserList, _Req, _Context) ->
+    %% TODO: Implement business logic
+    Code = 501,
+    RespBody = #{message => <<"Yet to be implemented">>},
+    {Code, RespBody};
+
+handle_request(createUser, #{decoded_req_body := ReqBody} = _Req, _Context) ->
+    %% TODO: Implement business logic
+    Code = 501,
+    RespBody = #{message => <<"Yet to be implemented">>},
+    {Code, RespBody};
+
+handle_request(OperationId, _Req, Context) ->
+    RespBody = #{message => <<"Not implemented">>},
+    RespHeaders = #{<<"content-type">> => <<"application/json">>},
+    {501, RespBody, Context, RespHeaders}.
+```
+
+### JSON Schema Files
+
+**Location:** `apps/<app_name>/priv/json_schemas/`
+
+Each operation gets a JSON file with complete OpenAPI operation definition:
+
+**`apps/my_app/priv/json_schemas/createUser.json`:**
+```json
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "operation_id": "createUser",
+  "path": "/api/v1/users",
+  "method": "POST",
+  "summary": "Create a new user",
+  "description": "Creates a user account with the provided information",
+  "tags": ["Users"],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "required": ["name", "email"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 100
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            }
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "201": {
+      "description": "User created successfully",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "name": {"type": "string"},
+              "email": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "400": {
+      "description": "Invalid input"
+    }
+  }
+}
+```
+
+**`apps/my_app/priv/json_schemas/_openapi_metadata.json`:**
+```json
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "My API",
+    "version": "1.0.0",
+    "description": "API description"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Production"
+    }
+  ]
+}
+```
+
+## Workflow
+
+### Typical Development Flow
+
+1. **Start with OpenAPI spec** - Design your API
+2. **Generate handler** - Create Erlang code structure
+3. **Implement business logic** - Fill in the TODOs
+4. **Update spec** - Add new routes to OpenAPI
+5. **Update handler** - Regenerate to add new routes
+6. **Generate docs** - Create updated OpenAPI spec from code
+
+### Update Existing API
+
+```bash
+# 1. Dry run to see what will change
+rebar3 openapi_gen_erlang \
+  --spec specs/api_v2.yaml \
+  --handler src/my_handler.erl \
+  --app my_app \
+  --dry-run
+
+# 2. Review the changes shown
+
+# 3. Apply with backup
+rebar3 openapi_gen_erlang \
+  --spec specs/api_v2.yaml \
+  --handler src/my_handler.erl \
+  --app my_app \
+  --backup
+
+# 4. Implement new operations
+# Edit src/my_handler.erl and add business logic
+
+# 5. Generate updated spec
+rebar3 openapi_gen_spec \
+  --handler src/my_handler.erl \
+  --app my_app \
+  --output docs/api_v2.yaml
+```
+
+## Idempotency
+
+Running the same command multiple times produces the same result:
+- No duplicate routes in `routes/0`
+- No duplicate function clauses in `handle_request/3`
+- Existing implementations are preserved
+- Safe to run repeatedly
+
+## Error Handling
+
+The tool provides clear, actionable error messages:
+
+```
+ERROR: Invalid operationId 'get-users' for GET /api/users
+       operationId must be in camelCase format
+       - Must start with lowercase letter (a-z)
+       - Can only contain letters (a-zA-Z) and numbers (0-9)
+       - No hyphens, underscores, or spaces allowed
+       Examples: createUser, getUserById, updateOrder, deleteItem
+```
+
+## Examples
+
+See `examples/` directory for:
+- `examples/specs/sample.yaml` - Example OpenAPI specification
+- `examples/handlers/min_handler.erl` - Minimal handler example
+- `examples/schemas/` - Example JSON schema files
+
+## Troubleshooting
+
+### Handler not formatting correctly?
+
+Ensure erlfmt is installed:
+```bash
+rebar3 plugins list | grep erlfmt
+```
+
+Add to your `rebar.config` if missing:
+```erlang
+{plugins, [erlfmt]}.
+```
+
+### Schema files not generated?
+
+Check that the app directory exists:
+```bash
+ls -la apps/my_app/priv/json_schemas/
+```
+
+Create it if needed:
+```bash
+mkdir -p apps/my_app/priv/json_schemas/
+```
+
+### OpenAPI validation errors?
+
+Validate your spec with standard tools:
+```bash
+npm install -g @apidevtools/swagger-cli
+swagger-cli validate api.yaml
+```
+
+## Requirements
+
+- Erlang/OTP 27.x or later
+- Rebar3 3.25.x or later
+- erlfmt plugin (for code formatting)
+
+## Dependencies
+
+- `jsx` - JSON encoding/decoding
+- `yamerl` - YAML parsing
+- `erlfmt` - Erlang code formatting
+
+## Contributing
+
+See `CONTRIBUTING.md` for guidelines.
 
 ## License
-Apache-2.0. See `LICENSE`.
+
+Apache-2.0 - See `LICENSE` file.
+
+## Support
+
+- **Issues**: https://github.com/greyorange-labs/erl-openapi/issues
+- **Examples**: See `examples/` directory
+- **Architecture**: See `docs/ARCHITECTURE.md`
