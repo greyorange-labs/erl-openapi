@@ -4,14 +4,14 @@ Rebar3 plugin for bidirectional OpenAPI 3.x ↔ Erlang handler synchronization.
 
 ## Features
 
-- ✅ **Generate Erlang handlers** from OpenAPI 3.x specifications
-- ✅ **Update existing handlers** with new routes and function clauses
-- ✅ **Generate OpenAPI specs** from Erlang handlers and JSON schemas
-- ✅ **Auto-format code** with erlfmt
-- ✅ **Idempotent operations** - no duplicate routes or clauses
-- ✅ **camelCase operationId enforcement** - validates naming conventions
-- ✅ **Dry-run mode** to preview changes
-- ✅ **Optional backups** before modifications
+- ✅ **Bidirectional sync**: OpenAPI ↔ Erlang
+- ✅ **Generate handlers** from OpenAPI specs with JSON schemas
+- ✅ **Generate OpenAPI specs** from handlers with proper ordering
+- ✅ **Versioned schemas**: Auto-detect changes, create versioned files
+- ✅ **Component & inline schemas**: Supports both patterns
+- ✅ **camelCase enforcement**: Validates operationId naming
+- ✅ **Idempotent updates**: No duplicates, safe re-runs
+- ✅ **Auto-format**: erlfmt integration
 
 ## Installation
 
@@ -218,80 +218,94 @@ handle_request(OperationId, _Req, Context) ->
 
 **Location:** `apps/<app_name>/priv/json_schemas/`
 
-Each operation gets a JSON file with complete OpenAPI operation definition:
+**Directory Structure:**
+```
+apps/my_app/priv/json_schemas/
+├── _openapi_metadata.json          # Global metadata
+├── operations/                      # Operation definitions
+│   ├── createUser.json
+│   └── getUserById.json
+└── components/                      # Reusable schemas
+    └── schemas/
+        ├── User.json
+        ├── User_v2.json            # Versioned schema
+        └── ErrorResponse.json
+```
 
-**`apps/my_app/priv/json_schemas/createUser.json`:**
+**Operation files** (in `operations/`):
+
+**`operations/createUser.json`:**
 ```json
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
   "operation_id": "createUser",
   "path": "/api/v1/users",
   "method": "POST",
   "summary": "Create a new user",
-  "description": "Creates a user account with the provided information",
-  "tags": ["Users"],
   "requestBody": {
-    "required": true,
     "content": {
       "application/json": {
         "schema": {
-          "type": "object",
-          "required": ["name", "email"],
-          "properties": {
-            "name": {
-              "type": "string",
-              "minLength": 3,
-              "maxLength": 100
-            },
-            "email": {
-              "type": "string",
-              "format": "email"
-            }
-          }
-        }
-      }
-    }
-  },
-  "responses": {
-    "201": {
-      "description": "User created successfully",
-      "content": {
-        "application/json": {
-          "schema": {
-            "type": "object",
-            "properties": {
-              "id": {"type": "string"},
-              "name": {"type": "string"},
-              "email": {"type": "string"}
-            }
-          }
+          "$ref": "#/components/schemas/UserInput"
         }
       }
     },
-    "400": {
-      "description": "Invalid input"
+    "required": true
+  },
+  "responses": {
+    "201": {
+      "description": "User created",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      }
     }
   }
 }
 ```
 
-**`apps/my_app/priv/json_schemas/_openapi_metadata.json`:**
+**`components/schemas/User.json`:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {"type": "string"},
+    "name": {"type": "string"},
+    "email": {"type": "string"}
+  }
+}
+```
+
+**`_openapi_metadata.json`:**
 ```json
 {
   "openapi": "3.0.3",
   "info": {
     "title": "My API",
-    "version": "1.0.0",
-    "description": "API description"
+    "version": "1.0.0"
   },
-  "servers": [
-    {
-      "url": "https://api.example.com",
-      "description": "Production"
-    }
-  ]
+  "servers": [{"url": "https://api.example.com"}]
 }
 ```
+
+### Schema Versioning
+
+When schemas change, versioned files are created automatically:
+
+```
+⚠️  Schema conflict detected for 'User'
+   Existing: apps/my_app/priv/json_schemas/components/schemas/User.json
+   New version: apps/my_app/priv/json_schemas/components/schemas/User_v2.json
+   → Review both schemas and update $ref paths if needed.
+```
+
+**Features:**
+- Content-based comparison (only creates new version if different)
+- Sequential versioning (`User.json`, `User_v2.json`, `User_v3.json`)
+- Automatic $ref path updates in operation files
+- Orphaned file detection
 
 ## Workflow
 

@@ -5,14 +5,96 @@
 %% Note: yamerl doesn't have a good encoder, so we'll use a simple custom YAML writer
 %% For production, consider using a proper YAML library or JSON output
 write(OpenapiMap, OutputPath) ->
-    %% Convert map to YAML string
-    YamlContent = map_to_yaml(OpenapiMap, 0),
+    %% Convert map to YAML string with proper ordering
+    YamlContent = map_to_yaml_root(OpenapiMap, 0),
 
     %% Ensure directory exists
     ok = filelib:ensure_dir(OutputPath),
 
     %% Write to file
     file:write_file(OutputPath, YamlContent).
+
+%% Convert root-level OpenAPI map with proper key ordering
+map_to_yaml_root(Map, Indent) when is_map(Map) ->
+    %% Define standard OpenAPI key order
+    StandardOrder = [
+        <<"openapi">>,
+        <<"info">>,
+        <<"servers">>,
+        <<"security">>,
+        <<"tags">>,
+        <<"paths">>,
+        <<"components">>,
+        <<"externalDocs">>
+    ],
+
+    %% Sort keys according to standard order, then alphabetically for unknown keys
+    AllKeys = maps:keys(Map),
+    {OrderedKeys, OtherKeys} = lists:partition(
+        fun(K) -> lists:member(K, StandardOrder) end,
+        AllKeys
+    ),
+
+    SortedOrderedKeys = lists:sort(
+        fun(A, B) ->
+            IndexA = index_of(A, StandardOrder),
+            IndexB = index_of(B, StandardOrder),
+            IndexA =< IndexB
+        end,
+        OrderedKeys
+    ),
+
+    FinalKeys = SortedOrderedKeys ++ lists:sort(OtherKeys),
+
+    %% Convert to YAML using ordered keys
+    IndentStr = lists:duplicate(Indent, $ ),
+    Lines = lists:filtermap(
+        fun(K) ->
+            case maps:get(K, Map, undefined) of
+                undefined ->
+                    false;
+                [] ->
+                    %% Empty list - skip it entirely
+                    false;
+                V when is_map(V), map_size(V) =:= 0 ->
+                    %% Empty map - skip it entirely
+                    false;
+                V ->
+                    KeyStr = to_string(K),
+                    Line = case V of
+                        SubMap when is_map(SubMap) ->
+                            %% Non-empty nested map - put on new lines
+                            SubYaml = map_to_yaml(SubMap, Indent + 2),
+                            io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml]);
+                        SubList when is_list(SubList) ->
+                            case is_string(SubList) of
+                                true ->
+                                    %% It's a string value
+                                    io_lib:format("~s~s: ~s", [IndentStr, KeyStr, format_string(SubList)]);
+                                false ->
+                                    %% Non-empty list - put on new lines
+                                    SubYaml = list_to_yaml(SubList, Indent + 2),
+                                    io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml])
+                            end;
+                        _ ->
+                            %% Simple value - same line
+                            ValueStr = value_to_yaml(V, Indent + 2),
+                            io_lib:format("~s~s: ~s", [IndentStr, KeyStr, ValueStr])
+                    end,
+                    {true, Line}
+            end
+        end,
+        FinalKeys
+    ),
+    string:join(Lines, "\n").
+
+%% Helper to find index of element in list
+index_of(Element, List) ->
+    index_of(Element, List, 1).
+
+index_of(_, [], _) -> 999999;
+index_of(Element, [Element|_], Index) -> Index;
+index_of(Element, [_|Rest], Index) -> index_of(Element, Rest, Index + 1).
 
 %% Convert Erlang map to YAML string
 map_to_yaml(Map, Indent) when is_map(Map) ->

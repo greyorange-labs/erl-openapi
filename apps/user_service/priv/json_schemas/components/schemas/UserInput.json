@@ -9,23 +9,32 @@
       "type": "string"
     },
     "name": {
-      "maxLength": 100,
-      "minLength": 2,
+      "maxLength": 150,
+      "minLength": 3,
       "type": "string"
+    },
+    "phoneNumber": {
+      "pattern": "^\\+?[1-9]\\d{1,14}$",
+      "type": "string"
+    },
+    "preferences": {
+      "$ref": "#/components/schemas/UserPreferences"
     },
     "role": {
       "default": "user",
       "enum": [
         "admin",
         "user",
-        "guest"
+        "guest",
+        "superadmin"
       ],
       "type": "string"
     }
   },
   "required": [
     "email",
-    "name"
+    "name",
+    "phoneNumber"
   ],
   "type": "object"
 }

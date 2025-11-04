@@ -6,6 +6,15 @@
     "country": {
       "type": "string"
     },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
+    },
+    "state": {
+      "type": "string"
+    },
     "street": {
       "type": "string"
     },

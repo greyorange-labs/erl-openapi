@@ -17,7 +17,17 @@
     "name": {
       "type": "string"
     },
+    "phoneNumber": {
+      "type": "string"
+    },
+    "preferences": {
+      "$ref": "#/components/schemas/UserPreferences"
+    },
     "role": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "format": "date-time",
       "type": "string"
     }
   },

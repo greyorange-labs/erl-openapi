@@ -16,7 +16,7 @@
     "content": {
       "application/json": {
         "schema": {
-          "$ref": "#/components/schemas/UserInput_v2"
+          "$ref": "#/components/schemas/UserInput"
         }
       }
     },
@@ -27,7 +27,7 @@
       "content": {
         "application/json": {
           "schema": {
-            "$ref": "#/components/schemas/UserResponse_v2"
+            "$ref": "#/components/schemas/UserResponse"
           }
         }
       },
