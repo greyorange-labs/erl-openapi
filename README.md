@@ -12,6 +12,7 @@ Rebar3 plugin for bidirectional OpenAPI 3.x ↔ Erlang handler synchronization.
 - ✅ **camelCase enforcement**: Validates operationId naming
 - ✅ **Idempotent updates**: No duplicates, safe re-runs
 - ✅ **Auto-format**: erlfmt integration
+- ✅ **Schema validation**: Runtime request/response validation with jesse
 
 ## Installation
 
@@ -409,17 +410,62 @@ npm install -g @apidevtools/swagger-cli
 swagger-cli validate api.yaml
 ```
 
+## Runtime Validation
+
+The plugin includes `openapi_schema_loader` for runtime request/response validation using [jesse](https://github.com/2600hz/erlang-jesse).
+
+### Usage
+
+```erlang
+%% In your handler or middleware
+handle_request(<<"POST">>, [<<"orders">>], Req) ->
+    {ok, Body} = cowboy_req:read_body(Req),
+    RequestData = jsx:decode(Body, [return_maps]),
+    
+    %% Load and cache schema
+    {ok, Schema} = openapi_schema_loader:load_schema(<<"createOrder">>, my_app),
+    jesse:add_schema(<<"createOrder_request">>, Schema),
+    
+    %% Validate
+    case jesse:validate(<<"createOrder_request">>, RequestData) of
+        {ok, ValidData} ->
+            %% Process valid request
+            handle_create_order(ValidData, Req);
+        {error, ValidationErrors} ->
+            %% Return 400 Bad Request
+            {400, #{<<"errors">> => format_errors(ValidationErrors)}}
+    end.
+```
+
+### Features
+
+- **Automatic $ref resolution**: Recursively resolves component schema references
+- **Full schema inlining**: Returns complete schemas ready for jesse
+- **Circular reference detection**: Prevents infinite loops
+- **Error handling**: Clear error messages for missing schemas
+
+### Add jesse dependency
+
+```erlang
+%% In your application's rebar.config
+{deps, [
+    {jesse, "1.8.0"}
+]}.
+```
+
 ## Requirements
 
 - Erlang/OTP 27.x or later
 - Rebar3 3.25.x or later
 - erlfmt plugin (for code formatting)
+- jesse (optional, for runtime validation)
 
 ## Dependencies
 
 - `jsx` - JSON encoding/decoding
 - `yamerl` - YAML parsing
 - `erlfmt` - Erlang code formatting
+- `jesse` - JSON Schema validator (optional)
 
 ## Contributing
 
