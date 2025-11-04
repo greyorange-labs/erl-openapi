@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "required": ["customerId", "items"],
+  "properties": {
+    "customerId": {
+      "type": "string",
+      "example": "cust_123abc"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/components/schemas/OrderItem"
+      }
+    },
+    "shippingAddress": {
+      "$ref": "#/components/schemas/Address"
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 500
+    }
+  }
+}
+
+

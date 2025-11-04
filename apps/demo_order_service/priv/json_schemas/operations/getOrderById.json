@@ -1,38 +1,41 @@
 {
+  "operation_id": "getOrderById",
+  "path": "/orders/{orderId}",
   "method": "GET",
-  "operation_id": "getUserById",
+  "summary": "Get order by ID",
+  "tags": ["Orders"],
   "parameters": [
     {
+      "name": "orderId",
       "in": "path",
-      "name": "userId",
       "required": true,
       "schema": {
         "type": "string"
       }
     }
   ],
-  "path": "/api/v1/users/{userId}",
   "responses": {
     "200": {
+      "description": "Order details",
       "content": {
         "application/json": {
           "schema": {
-            "$ref": "#/components/schemas/UserResponse"
+            "$ref": "#/components/schemas/OrderResponse"
           }
         }
-      },
-      "description": "User details"
+      }
     },
     "404": {
+      "description": "Order not found",
       "content": {
         "application/json": {
           "schema": {
             "$ref": "#/components/schemas/ErrorResponse"
           }
         }
-      },
-      "description": "User not found"
+      }
     }
-  },
-  "summary": "Get user by ID"
+  }
 }
+
+

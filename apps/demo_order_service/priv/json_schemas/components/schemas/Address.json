@@ -1,0 +1,28 @@
+{
+  "type": "object",
+  "required": ["street", "city", "country"],
+  "properties": {
+    "street": {
+      "type": "string",
+      "example": "123 Main St"
+    },
+    "city": {
+      "type": "string",
+      "example": "San Francisco"
+    },
+    "state": {
+      "type": "string",
+      "example": "CA"
+    },
+    "country": {
+      "type": "string",
+      "example": "USA"
+    },
+    "zipCode": {
+      "type": "string",
+      "example": "94102"
+    }
+  }
+}
+
+

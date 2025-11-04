@@ -1,38 +1,41 @@
 {
+  "operation_id": "createOrder",
+  "path": "/orders",
   "method": "POST",
-  "operation_id": "createUser",
-  "path": "/api/v1/users",
+  "summary": "Create a new order",
+  "tags": ["Orders"],
   "requestBody": {
+    "required": true,
     "content": {
       "application/json": {
         "schema": {
-          "$ref": "#/components/schemas/UserInput"
+          "$ref": "#/components/schemas/OrderInput"
         }
       }
-    },
-    "required": true
+    }
   },
   "responses": {
     "201": {
+      "description": "Order created successfully",
       "content": {
         "application/json": {
           "schema": {
-            "$ref": "#/components/schemas/UserResponse"
+            "$ref": "#/components/schemas/OrderResponse"
           }
         }
-      },
-      "description": "User created successfully"
+      }
     },
     "400": {
+      "description": "Invalid input",
       "content": {
         "application/json": {
           "schema": {
             "$ref": "#/components/schemas/ErrorResponse"
           }
         }
-      },
-      "description": "Validation error"
+      }
     }
-  },
-  "summary": "Create a new user"
+  }
 }
+
+

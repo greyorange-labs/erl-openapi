@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "properties": {
+    "orderId": {
+      "type": "string",
+      "example": "ord_789ghi"
+    },
+    "customerId": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/OrderItem"
+      }
+    },
+    "shippingAddress": {
+      "$ref": "#/components/schemas/Address"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "confirmed", "shipped", "delivered", "cancelled"]
+    },
+    "totalAmount": {
+      "type": "number",
+      "format": "float"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
+
+
