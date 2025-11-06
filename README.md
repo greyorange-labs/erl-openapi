@@ -187,8 +187,9 @@ routes() ->
             }
         },
         #{
-            path => "/api/v1/users",
+            path => "/api/v2/users",
             allowed_methods => #{
+                <<"get">> => #{operation_id => getUserList},
                 <<"post">> => #{
                     operation_id => createUser,
                     content_types_accepted => [{<<"application">>, <<"json">>, '*'}]
@@ -202,13 +203,11 @@ handle_request(getUserList, _Req, _Context) ->
     Code = 501,
     RespBody = #{message => <<"Yet to be implemented">>},
     {Code, RespBody};
-
 handle_request(createUser, #{decoded_req_body := ReqBody} = _Req, _Context) ->
     %% TODO: Implement business logic
     Code = 501,
     RespBody = #{message => <<"Yet to be implemented">>},
     {Code, RespBody};
-
 handle_request(OperationId, _Req, Context) ->
     RespBody = #{message => <<"Not implemented">>},
     RespHeaders = #{<<"content-type">> => <<"application/json">>},
@@ -378,79 +377,12 @@ See `examples/` directory for:
 
 ## Troubleshooting
 
-### Handler not formatting correctly?
-
-Ensure erlfmt is installed:
-```bash
-rebar3 plugins list | grep erlfmt
-```
-
-Add to your `rebar.config` if missing:
-```erlang
-{plugins, [erlfmt]}.
-```
-
-### Schema files not generated?
-
-Check that the app directory exists:
-```bash
-ls -la apps/my_app/priv/json_schemas/
-```
-
-Create it if needed:
-```bash
-mkdir -p apps/my_app/priv/json_schemas/
-```
-
 ### OpenAPI validation errors?
 
 Validate your spec with standard tools:
 ```bash
 npm install -g @apidevtools/swagger-cli
 swagger-cli validate api.yaml
-```
-
-## Runtime Validation
-
-The plugin includes `openapi_schema_loader` for runtime request/response validation using [jesse](https://github.com/2600hz/erlang-jesse).
-
-### Usage
-
-```erlang
-%% In your handler or middleware
-handle_request(<<"POST">>, [<<"orders">>], Req) ->
-    {ok, Body} = cowboy_req:read_body(Req),
-    RequestData = jsx:decode(Body, [return_maps]),
-    
-    %% Load and cache schema
-    {ok, Schema} = openapi_schema_loader:load_schema(<<"createOrder">>, my_app),
-    jesse:add_schema(<<"createOrder_request">>, Schema),
-    
-    %% Validate
-    case jesse:validate(<<"createOrder_request">>, RequestData) of
-        {ok, ValidData} ->
-            %% Process valid request
-            handle_create_order(ValidData, Req);
-        {error, ValidationErrors} ->
-            %% Return 400 Bad Request
-            {400, #{<<"errors">> => format_errors(ValidationErrors)}}
-    end.
-```
-
-### Features
-
-- **Automatic $ref resolution**: Recursively resolves component schema references
-- **Full schema inlining**: Returns complete schemas ready for jesse
-- **Circular reference detection**: Prevents infinite loops
-- **Error handling**: Clear error messages for missing schemas
-
-### Add jesse dependency
-
-```erlang
-%% In your application's rebar.config
-{deps, [
-    {jesse, "1.8.0"}
-]}.
 ```
 
 ## Requirements
