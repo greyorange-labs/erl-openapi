@@ -59,18 +59,36 @@ proplist_to_map(List) when is_list(List) ->
 proplist_to_map(Other) ->
     Other.
 
-%% Check if a list is a string (list of integers representing characters)
-is_string([]) -> true;
-is_string([H|T]) when is_integer(H), H >= 0, H =< 1114111 -> is_string(T);
+%% Check if a list is a string (printable characters only)
+%% A valid string must have at least one character and all must be printable
+is_string([]) -> false;  % Empty list is an empty array, not a string
+is_string([H|T]) when is_integer(H) ->
+    %% Consider it a string only if it contains printable characters
+    %% Printable range: space (32) to ~ (126) for ASCII, or valid Unicode
+    IsPrintable = (H >= 32 andalso H =< 126) orelse (H >= 128 andalso H =< 1114111),
+    IsPrintable andalso is_string_rest(T);
 is_string(_) -> false.
+
+%% Check rest of string (can include control chars like \n, \t)
+is_string_rest([]) -> true;
+is_string_rest([H|T]) when is_integer(H), H >= 0, H =< 1114111 ->
+    is_string_rest(T);
+is_string_rest(_) -> false.
 
 is_proplist([{_K, _V} | Rest]) -> is_proplist(Rest);
 is_proplist([]) -> true;
 is_proplist(_) -> false.
 
 to_binary(B) when is_binary(B) -> B;
-to_binary(L) when is_list(L) -> list_to_binary(L);
-to_binary(A) when is_atom(A) -> atom_to_binary(A, utf8).
+to_binary(L) when is_list(L) ->
+    case is_string(L) of
+        true -> list_to_binary(L);
+        false -> L  % Keep as list (it's an array, not a string)
+    end;
+to_binary(A) when is_atom(A) -> atom_to_binary(A, utf8);
+to_binary(N) when is_integer(N) -> integer_to_binary(N);
+to_binary(N) when is_float(N) -> float_to_binary(N);
+to_binary(Other) -> Other.  % Keep other types as-is
 
 %% Format yamerl exceptions into structured error details
 format_yamerl_errors(Exceptions, FilePath) when is_list(Exceptions) ->
