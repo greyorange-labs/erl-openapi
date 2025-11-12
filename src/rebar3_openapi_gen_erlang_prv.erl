@@ -216,18 +216,18 @@ binary_to_list_safe(L) when is_list(L) -> L.
 
 %% Format a single YAML parsing error
 format_yaml_error(#{line := Line, column := Col, message := Msg, suggestion := Sugg}) ->
-    io_lib:format("  Line ~p, Column ~p: ~s~n  → ~s", [Line, Col, Msg, Sugg]);
+    lists:flatten(io_lib:format("  Line ~p, Column ~p: ~s~n  → ~s", [Line, Col, Msg, Sugg]));
 format_yaml_error(#{message := Msg}) ->
-    io_lib:format("  ~s", [Msg]);
+    lists:flatten(io_lib:format("  ~s", [Msg]));
 format_yaml_error(Error) ->
-    io_lib:format("  ~p", [Error]).
+    lists:flatten(io_lib:format("  ~p", [Error])).
 
 %% Format a single validation error
 format_validation_error(#{type := _Type, field := Field, message := Msg} = Error) ->
     Suggestion = maps:get(suggestion, Error, ""),
-    io_lib:format("  • ~s: ~s~n    ~s", [format_field_name(Field), Msg, Suggestion]);
+    lists:flatten(io_lib:format("  • ~s: ~s~n    ~s", [format_field_name(Field), Msg, Suggestion]));
 format_validation_error(Error) ->
-    io_lib:format("  • ~p", [Error]).
+    lists:flatten(io_lib:format("  • ~p", [Error])).
 
 format_field_name(Field) when is_binary(Field) -> binary_to_list(Field);
 format_field_name(Field) when is_atom(Field) -> atom_to_list(Field);
