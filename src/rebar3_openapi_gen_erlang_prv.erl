@@ -74,12 +74,13 @@ format_error({missing_arg, handler}) ->
 format_error({missing_arg, app}) ->
     "Missing required argument: --app <app-name>";
 format_error({yaml_parse_error, #{file := File, errors := Errors}}) when is_list(Errors) ->
-    ErrorsFormatted = lists:flatten([format_yaml_error(E) ++ "\n" || E <- Errors]),
-    io_lib:format(
-        "Failed to parse OpenAPI YAML: ~s~n~s"
+    ErrorLines = [format_yaml_error(E) || E <- Errors],
+    ErrorsFormatted = lists:flatten(lists:join("\n", ErrorLines)),
+    lists:flatten(io_lib:format(
+        "Failed to parse OpenAPI YAML: ~s~n~s~n"
         "Please fix the YAML syntax errors above.",
         [File, ErrorsFormatted]
-    );
+    ));
 format_error({yaml_parse_error, #{message := _Msg, reason := {yamerl_exception, Exceptions}}}) when is_list(Exceptions) ->
     ErrorDetails = openapi_yaml_loader:format_yamerl_errors(Exceptions, "spec"),
     format_error({yaml_parse_error, ErrorDetails});
@@ -88,12 +89,13 @@ format_error({yaml_parse_error, #{message := Msg, reason := Reason}}) ->
 format_error({yaml_parse_error, Err}) ->
     io_lib:format("Failed to parse OpenAPI YAML: ~p", [Err]);
 format_error({schema_validation_failed, Errors}) when is_list(Errors) ->
-    ErrorsFormatted = lists:flatten([format_validation_error(E) ++ "\n" || E <- Errors]),
-    io_lib:format(
-        "OpenAPI specification validation failed:~n~s"
+    ErrorLines = [format_validation_error(E) || E <- Errors],
+    ErrorsFormatted = lists:flatten(lists:join("\n", ErrorLines)),
+    lists:flatten(io_lib:format(
+        "OpenAPI specification validation failed:~n~s~n"
         "Refer to: https://swagger.io/specification/",
         [ErrorsFormatted]
-    );
+    ));
 format_error({schema_validation_failed, Error}) ->
     format_error({schema_validation_failed, [Error]});
 format_error({file_read_error, Path, Err}) ->
