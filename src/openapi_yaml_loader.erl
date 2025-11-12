@@ -1,5 +1,5 @@
 -module(openapi_yaml_loader).
--export([load/1, proplist_to_map/1]).
+-export([load/1, proplist_to_map/1, format_yamerl_errors/2]).
 
 load(Path) ->
     %% Ensure yamerl application is started
@@ -21,7 +21,19 @@ load(Path) ->
                     _ -> {error, {yaml, multiple_documents_not_supported}}
                 end
             catch
-                _:Err -> {error, {yaml_parse_error, Err}}
+                error:{yamerl_exception, Exceptions} ->
+                    %% Extract detailed error information from yamerl
+                    ErrorDetails = format_yamerl_errors(Exceptions, BinPath),
+                    {error, {yaml_parse_error, ErrorDetails}};
+                Class:Reason:Stack ->
+                    %% Generic error with stack trace
+                    {error, {yaml_parse_error, #{
+                        class => Class,
+                        reason => Reason,
+                        message => "Failed to parse YAML file",
+                        file => BinPath,
+                        stacktrace => Stack
+                    }}}
             end;
         {error, E} -> {error, {file_read_error, E}}
     end.
@@ -59,3 +71,70 @@ is_proplist(_) -> false.
 to_binary(B) when is_binary(B) -> B;
 to_binary(L) when is_list(L) -> list_to_binary(L);
 to_binary(A) when is_atom(A) -> atom_to_binary(A, utf8).
+
+%% Format yamerl exceptions into structured error details
+format_yamerl_errors(Exceptions, FilePath) when is_list(Exceptions) ->
+    Errors = lists:map(fun format_single_yamerl_error/1, Exceptions),
+    #{
+        file => FilePath,
+        errors => Errors,
+        message => "YAML parsing failed"
+    };
+format_yamerl_errors(Exception, FilePath) ->
+    format_yamerl_errors([Exception], FilePath).
+
+%% Format a single yamerl exception
+format_single_yamerl_error({yamerl_parsing_error, error, Msg, Line, Col, _Token, _Type, _Extra}) ->
+    #{
+        type => yaml_syntax_error,
+        line => Line,
+        column => Col,
+        message => format_yamerl_message(Msg),
+        suggestion => suggest_yaml_fix(Msg)
+    };
+format_single_yamerl_error({yamerl_parsing_error, _Level, Msg, Line, Col, _}) ->
+    #{
+        type => yaml_parsing_error,
+        line => Line,
+        column => Col,
+        message => format_yamerl_message(Msg),
+        suggestion => suggest_yaml_fix(Msg)
+    };
+format_single_yamerl_error(Other) ->
+    #{
+        type => unknown_error,
+        message => io_lib:format("~p", [Other]),
+        suggestion => "Check YAML syntax and structure"
+    }.
+
+%% Format yamerl error message
+format_yamerl_message(Msg) when is_list(Msg) ->
+    Msg;
+format_yamerl_message(Msg) when is_binary(Msg) ->
+    binary_to_list(Msg);
+format_yamerl_message(Msg) ->
+    io_lib:format("~p", [Msg]).
+
+%% Suggest fixes for common YAML errors
+suggest_yaml_fix(Msg) when is_list(Msg) ->
+    MsgLower = string:to_lower(Msg),
+    HasIndent = string:str(MsgLower, "indent") > 0,
+    HasExpect = string:str(MsgLower, "expect") > 0,
+    HasFlow = string:str(MsgLower, "flow") > 0,
+    HasScalar = string:str(MsgLower, "scalar") > 0,
+    HasKey = string:str(MsgLower, "key") > 0,
+    
+    if
+        HasIndent ->
+            "Check YAML indentation - use consistent 2-space indents";
+        HasExpect ->
+            "Verify YAML syntax - check for missing colons, quotes, or proper list/map structure";
+        HasFlow orelse HasScalar ->
+            "Empty values are not allowed - either remove the field, use null, or provide a value like []";
+        HasKey ->
+            "Check for duplicate keys or keys with no values";
+        true ->
+            "Ensure proper YAML syntax with colons after keys and proper indentation"
+    end;
+suggest_yaml_fix(_) ->
+    "Check YAML syntax and structure".

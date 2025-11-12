@@ -33,13 +33,45 @@ generate(#{handler_path := HandlerPath, app_name := App, output_path := OutPath,
             %% Assemble complete OpenAPI spec with components
             OpenapiSpec = openapi_assembler:assemble(Routes, EnrichedOperations, Components, Metadata),
 
-            %% Write as YAML
-            case openapi_yaml_writer:write(OpenapiSpec, binary_to_list(OutPath)) of
+            %% Stage 1: Validate assembled spec structure
+            case openapi_schema_validator:validate_spec(OpenapiSpec) of
                 ok ->
-                    io:format("Generated OpenAPI spec: ~s~n", [OutPath]),
-                    ok;
-                {error, E} ->
-                    {error, {yaml_write_error, E}}
+                    %% Stage 2: Write as YAML
+                    case openapi_yaml_writer:write(OpenapiSpec, binary_to_list(OutPath)) of
+                        ok ->
+                            %% Stage 3: Verify generated YAML can be parsed back
+                            case openapi_yaml_loader:load(binary_to_list(OutPath)) of
+                                {ok, ReparsedSpec} ->
+                                    %% Stage 4: Validate reparsed spec
+                                    case openapi_schema_validator:validate_spec(ReparsedSpec) of
+                                        ok ->
+                                            io:format("Generated OpenAPI spec: ~s~n", [OutPath]),
+                                            io:format("✓ Validation passed - generated spec is valid OpenAPI 3.x~n"),
+                                            ok;
+                                        {error, ValidationErrors} ->
+                                            io:format("~n❌ ERROR: Generated spec failed validation!~n"),
+                                            format_validation_errors(ValidationErrors),
+                                            io:format("~nThis is a bug in the code generator. Please report it.~n"),
+                                            {error, invalid_generated_spec}
+                                    end;
+                                {error, {yaml_parse_error, ParseError}} ->
+                                    io:format("~n❌ ERROR: Generated unparseable YAML!~n"),
+                                    format_parse_error(ParseError),
+                                    io:format("~nThis is a bug in the YAML writer. Please report it.~n"),
+                                    {error, invalid_generated_yaml};
+                                {error, ParseError} ->
+                                    io:format("~n❌ ERROR: Failed to parse generated YAML!~n"),
+                                    io:format("  Error: ~p~n", [ParseError]),
+                                    {error, yaml_parse_failed}
+                            end;
+                        {error, E} ->
+                            {error, {yaml_write_error, E}}
+                    end;
+                {error, ValidationErrors} ->
+                    io:format("~n❌ ERROR: Invalid OpenAPI structure before writing!~n"),
+                    format_validation_errors(ValidationErrors),
+                    io:format("~nThis is a bug in the spec assembler. Please report it.~n"),
+                    {error, invalid_spec_structure}
             end;
         {error, E} ->
             {error, {file_read_error, HandlerPath, E}}
@@ -80,3 +112,33 @@ combine_routes_with_schemas(Routes, SchemaMap) ->
 ensure_binary(B) when is_binary(B) -> B;
 ensure_binary(L) when is_list(L) -> list_to_binary(L);
 ensure_binary(A) when is_atom(A) -> atom_to_binary(A, utf8).
+
+%% Format validation errors
+format_validation_errors(Errors) when is_list(Errors) ->
+    io:format("  Found ~p validation error(s):~n", [length(Errors)]),
+    lists:foreach(fun format_single_validation_error/1, Errors);
+format_validation_errors(Error) ->
+    format_validation_errors([Error]).
+
+format_single_validation_error(#{type := Type, field := Field, message := Msg} = Error) ->
+    io:format("~n    • Field: ~p~n", [Field]),
+    io:format("      Type: ~p~n", [Type]),
+    io:format("      Message: ~s~n", [Msg]),
+    case maps:get(suggestion, Error, undefined) of
+        undefined -> ok;
+        Sugg -> io:format("      Suggestion: ~s~n", [Sugg])
+    end;
+format_single_validation_error(Error) ->
+    io:format("    • ~p~n", [Error]).
+
+%% Format parse error
+format_parse_error(#{errors := Errors}) when is_list(Errors) ->
+    io:format("  Found ~p parsing error(s):~n", [length(Errors)]),
+    lists:foreach(fun format_single_parse_error/1, Errors);
+format_parse_error(Error) ->
+    io:format("  Error: ~p~n", [Error]).
+
+format_single_parse_error(#{line := Line, column := Col, message := Msg}) ->
+    io:format("    Line ~p, Column ~p: ~s~n", [Line, Col, Msg]);
+format_single_parse_error(Error) ->
+    io:format("    ~p~n", [Error]).

@@ -104,46 +104,49 @@ map_to_yaml(Map, Indent) when is_map(Map) ->
             %% Empty map - don't return standalone {}, will be handled by parent
             "";
         _ ->
-            Lines = lists:map(
+            Lines = lists:filtermap(
                 fun({K, V}) ->
-                    KeyStr = to_string(K),
-                    case V of
-                        SubMap when is_map(SubMap) ->
-                            case maps:size(SubMap) of
-                                0 ->
-                                    %% Empty nested map - put on same line
-                                    io_lib:format("~s~s: {}", [IndentStr, KeyStr]);
-                                _ ->
+                    %% Filter out empty values at all nesting levels
+                    case should_omit_value(V) of
+                        true ->
+                            false;
+                        false ->
+                            KeyStr = to_string(K),
+                            Line = case V of
+                                SubMap when is_map(SubMap) ->
                                     %% Non-empty nested map - put on new lines
                                     SubYaml = map_to_yaml(SubMap, Indent + 2),
-                                    io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml])
-                            end;
-                        SubList when is_list(SubList) ->
-                            case is_string(SubList) of
-                                true ->
-                                    %% It's a string value
-                                    io_lib:format("~s~s: ~s", [IndentStr, KeyStr, format_string(SubList)]);
-                                false ->
-                                    case SubList of
-                                        [] ->
-                                            %% Empty list
-                                            io_lib:format("~s~s: []", [IndentStr, KeyStr]);
-                                        _ ->
+                                    io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml]);
+                                SubList when is_list(SubList) ->
+                                    case is_string(SubList) of
+                                        true ->
+                                            %% It's a string value
+                                            io_lib:format("~s~s: ~s", [IndentStr, KeyStr, format_string(SubList)]);
+                                        false ->
                                             %% Non-empty list - put on new lines
                                             SubYaml = list_to_yaml(SubList, Indent + 2),
                                             io_lib:format("~s~s:~n~s", [IndentStr, KeyStr, SubYaml])
-                                    end
-                            end;
-                        _ ->
-                            %% Simple value - same line
-                            ValueStr = value_to_yaml(V, Indent + 2),
-                            io_lib:format("~s~s: ~s", [IndentStr, KeyStr, ValueStr])
+                                    end;
+                                _ ->
+                                    %% Simple value - same line
+                                    ValueStr = value_to_yaml(V, Indent + 2),
+                                    io_lib:format("~s~s: ~s", [IndentStr, KeyStr, ValueStr])
+                            end,
+                            {true, Line}
                     end
                 end,
                 lists:sort(maps:to_list(Map))
             ),
             string:join(Lines, "\n")
     end.
+
+%% Check if value should be omitted from YAML output
+should_omit_value([]) -> true;  % Empty list
+should_omit_value(V) when is_map(V), map_size(V) =:= 0 -> true;  % Empty map
+should_omit_value(<<>>) -> true;  % Empty binary
+should_omit_value("") -> true;  % Empty string
+should_omit_value(undefined) -> true;  % Undefined
+should_omit_value(_) -> false.
 
 %% Convert value to YAML string
 value_to_yaml(Map, Indent) when is_map(Map) ->
@@ -199,20 +202,72 @@ list_to_yaml(List, Indent) ->
     ),
     string:join(Lines, "\n").
 
-%% Format string with proper quoting
+%% Format string with proper quoting and escaping
 format_string(Str) ->
-    %% Check if string needs quoting
-    NeedsQuotes = lists:any(
-        fun(C) -> C =:= $: orelse C =:= $# orelse C =:= $\n end,
+    %% Check if string needs quoting or is multiline
+    HasNewline = lists:member($\n, Str),
+    HasSpecialChars = lists:any(
+        fun(C) ->
+            C =:= $: orelse C =:= $# orelse C =:= ${ orelse C =:= $} orelse
+            C =:= $[ orelse C =:= $] orelse C =:= $, orelse C =:= $& orelse
+            C =:= $* orelse C =:= $! orelse C =:= $| orelse C =:= $> orelse
+            C =:= $' orelse C =:= $" orelse C =:= $% orelse C =:= $@ orelse
+            C =:= $`
+        end,
         Str
     ),
-    case NeedsQuotes of
-        true ->
+    StartsWithSpecial = case Str of
+        [] -> false;
+        [H|_] -> H =:= $- orelse H =:= $? orelse H =:= $: orelse H =:= $  
+    end,
+    
+    %% Check if looks like a number or boolean
+    LooksLikeNumber = is_numeric_string(Str),
+    LooksLikeBoolean = Str =:= "true" orelse Str =:= "false" orelse Str =:= "null",
+    
+    NeedsQuotes = HasSpecialChars orelse StartsWithSpecial orelse 
+                  LooksLikeNumber orelse LooksLikeBoolean,
+    
+    if
+        HasNewline ->
+            %% Multiline string - use literal style
+            Lines = string:split(Str, "\n", all),
+            FormattedLines = ["  " ++ L || L <- Lines],
+            "|\n" ++ string:join(FormattedLines, "\n");
+        NeedsQuotes ->
             %% Use double quotes and escape special characters
-            Escaped = re:replace(Str, "\"", "\\\\\"", [global, {return, list}]),
+            Escaped = escape_string(Str),
             io_lib:format("\"~s\"", [Escaped]);
-        false ->
+        true ->
             Str
+    end.
+
+%% Escape special characters in strings
+escape_string(Str) ->
+    escape_string(Str, []).
+
+escape_string([], Acc) ->
+    lists:reverse(Acc);
+escape_string([H|T], Acc) ->
+    Escaped = case H of
+        $"  -> [$", $\\];
+        $\\ -> [$\\, $\\];
+        $\n -> [$n, $\\];
+        $\r -> [$r, $\\];
+        $\t -> [$t, $\\];
+        C   -> [C]
+    end,
+    escape_string(T, lists:reverse(Escaped) ++ Acc).
+
+%% Check if string looks like a number
+is_numeric_string(Str) ->
+    case string:to_float(Str) of
+        {_, []} -> true;
+        {_, _} ->
+            case string:to_integer(Str) of
+                {_, []} -> true;
+                _ -> false
+            end
     end.
 
 %% Check if list is a string
