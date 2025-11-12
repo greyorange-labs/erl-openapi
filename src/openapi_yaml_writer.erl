@@ -270,10 +270,21 @@ is_numeric_string(Str) ->
             end
     end.
 
-%% Check if list is a string
-is_string([]) -> true;
-is_string([H|T]) when is_integer(H), H >= 0, H =< 1114111 -> is_string(T);
+%% Check if list is a string (printable characters only)
+%% A valid string must have at least one character and all must be printable
+is_string([]) -> false;  % Empty list is not a string, it's an empty array
+is_string([H|T]) when is_integer(H) ->
+    %% Consider it a string only if it contains printable characters
+    %% Printable range: space (32) to ~ (126) for ASCII, or valid Unicode
+    IsPrintable = (H >= 32 andalso H =< 126) orelse (H >= 128 andalso H =< 1114111),
+    IsPrintable andalso is_string_rest(T);
 is_string(_) -> false.
+
+%% Check rest of string (can include tabs, newlines, etc.)
+is_string_rest([]) -> true;
+is_string_rest([H|T]) when is_integer(H), H >= 0, H =< 1114111 ->
+    is_string_rest(T);
+is_string_rest(_) -> false.
 
 %% Convert key to string
 to_string(B) when is_binary(B) -> binary_to_list(B);
