@@ -45,22 +45,22 @@ generate(#{handler_path := HandlerPath, app_name := App, output_path := OutPath,
                                     %% Stage 4: Validate reparsed spec
                                     case openapi_schema_validator:validate_spec(ReparsedSpec) of
                                         ok ->
-                                            io:format("Generated OpenAPI spec: ~s~n", [OutPath]),
-                                            io:format("✓ Validation passed - generated spec is valid OpenAPI 3.x~n"),
+                                            io:format("Generated OpenAPI spec: ~ts~n", [OutPath]),
+                                            io:format("SUCCESS: Validation passed - generated spec is valid OpenAPI 3.x~n"),
                                             ok;
                                         {error, ValidationErrors} ->
-                                            io:format("~n❌ ERROR: Generated spec failed validation!~n"),
+                                            io:format("~nERROR: Generated spec failed validation!~n"),
                                             format_validation_errors(ValidationErrors),
                                             io:format("~nThis is a bug in the code generator. Please report it.~n"),
                                             {error, invalid_generated_spec}
                                     end;
                                 {error, {yaml_parse_error, ParseError}} ->
-                                    io:format("~n❌ ERROR: Generated unparseable YAML!~n"),
+                                    io:format("~nERROR: Generated unparseable YAML!~n"),
                                     format_parse_error(ParseError),
                                     io:format("~nThis is a bug in the YAML writer. Please report it.~n"),
                                     {error, invalid_generated_yaml};
                                 {error, ParseError} ->
-                                    io:format("~n❌ ERROR: Failed to parse generated YAML!~n"),
+                                    io:format("~nERROR: Failed to parse generated YAML!~n"),
                                     io:format("  Error: ~p~n", [ParseError]),
                                     {error, yaml_parse_failed}
                             end;
@@ -68,7 +68,7 @@ generate(#{handler_path := HandlerPath, app_name := App, output_path := OutPath,
                             {error, {yaml_write_error, E}}
                     end;
                 {error, ValidationErrors} ->
-                    io:format("~n❌ ERROR: Invalid OpenAPI structure before writing!~n"),
+                    io:format("~nERROR: Invalid OpenAPI structure before writing!~n"),
                     format_validation_errors(ValidationErrors),
                     io:format("~nThis is a bug in the spec assembler. Please report it.~n"),
                     {error, invalid_spec_structure}
@@ -121,15 +121,15 @@ format_validation_errors(Error) ->
     format_validation_errors([Error]).
 
 format_single_validation_error(#{type := Type, field := Field, message := Msg} = Error) ->
-    io:format("~n    • Field: ~p~n", [Field]),
+    io:format("~n    * Field: ~p~n", [Field]),
     io:format("      Type: ~p~n", [Type]),
-    io:format("      Message: ~s~n", [Msg]),
+    io:format("      Message: ~ts~n", [Msg]),
     case maps:get(suggestion, Error, undefined) of
         undefined -> ok;
-        Sugg -> io:format("      Suggestion: ~s~n", [Sugg])
+        Sugg -> io:format("      Suggestion: ~ts~n", [Sugg])
     end;
 format_single_validation_error(Error) ->
-    io:format("    • ~p~n", [Error]).
+    io:format("    * ~p~n", [Error]).
 
 %% Format parse error
 format_parse_error(#{errors := Errors}) when is_list(Errors) ->
@@ -139,6 +139,6 @@ format_parse_error(Error) ->
     io:format("  Error: ~p~n", [Error]).
 
 format_single_parse_error(#{line := Line, column := Col, message := Msg}) ->
-    io:format("    Line ~p, Column ~p: ~s~n", [Line, Col, Msg]);
+    io:format("    Line ~p, Column ~p: ~ts~n", [Line, Col, Msg]);
 format_single_parse_error(Error) ->
     io:format("    ~p~n", [Error]).

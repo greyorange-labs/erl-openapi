@@ -211,10 +211,10 @@ write_component_schema_versioned(Dir, SchemaName, SchemaBody) ->
                     file:write_file(VersionedFile, Json),
                     
                     %% Output warning
-                    io:format("~n⚠️  Schema conflict detected for '~s'~n", [SchemaName]),
+                    io:format("~nWARNING: Schema conflict detected for '~s'~n", [SchemaName]),
                     io:format("   Existing: ~s~n", [BaseFile]),
                     io:format("   New version: ~s~n", [VersionedFile]),
-                    io:format("   → Review both schemas and update $ref paths if needed.~n~n", []),
+                    io:format("   >> Review both schemas and update $ref paths if needed.~n~n", []),
                     
                     list_to_binary(VersionedFileName)
             end
@@ -369,7 +369,7 @@ detect_orphaned_schemas(ComponentsDir, WrittenFiles) ->
                         end,
                         OrphanedFiles
                     ),
-                    io:format("   → Consider removing if no longer needed.~n~n", [])
+                    io:format("   >> Consider removing if no longer needed.~n~n", [])
             end;
         {error, _} ->
             %% Directory doesn't exist or can't be read

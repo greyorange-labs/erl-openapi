@@ -80,16 +80,16 @@ to_bin(B) when is_binary(B) -> B.
 
 %% Format YAML parsing error with context
 format_yaml_parse_error(FilePath, Details) ->
-    io:format("~n❌ Failed to parse OpenAPI YAML: ~s~n", [FilePath]),
+    io:format("~nERROR: Failed to parse OpenAPI YAML: ~ts~n", [FilePath]),
     case Details of
         #{file := _, errors := Errors} when is_list(Errors) ->
             lists:foreach(fun format_single_yaml_error/1, Errors);
         #{line := Line, column := Col, message := Msg, suggestion := Sugg} ->
             io:format("  Location: Line ~p, Column ~p~n", [Line, Col]),
-            io:format("  Problem: ~s~n", [Msg]),
-            io:format("  Suggestion: ~s~n", [Sugg]);
+            io:format("  Problem: ~ts~n", [Msg]),
+            io:format("  Suggestion: ~ts~n", [Sugg]);
         #{reason := Reason, message := Msg} ->
-            io:format("  Problem: ~s~n", [Msg]),
+            io:format("  Problem: ~ts~n", [Msg]),
             io:format("  Details: ~p~n", [Reason]);
         _ ->
             io:format("  Error: ~p~n", [Details])
@@ -100,14 +100,14 @@ format_yaml_parse_error(FilePath, Details) ->
 %% Format a single YAML error
 format_single_yaml_error(#{line := Line, column := Col, message := Msg, suggestion := Sugg}) ->
     io:format("~n  Location: Line ~p, Column ~p~n", [Line, Col]),
-    io:format("  Problem: ~s~n", [Msg]),
-    io:format("  Suggestion: ~s~n", [Sugg]);
+    io:format("  Problem: ~ts~n", [Msg]),
+    io:format("  Suggestion: ~ts~n", [Sugg]);
 format_single_yaml_error(Error) ->
     io:format("  Error: ~p~n", [Error]).
 
 %% Format OpenAPI schema validation errors
 format_schema_validation_errors(FilePath, Errors) when is_list(Errors) ->
-    io:format("~n❌ OpenAPI specification validation failed: ~s~n", [FilePath]),
+    io:format("~nERROR: OpenAPI specification validation failed: ~ts~n", [FilePath]),
     io:format("~nFound ~p validation error(s):~n", [length(Errors)]),
     lists:foreach(fun format_single_validation_error/1, Errors),
     io:format("~nPlease fix these errors and try again.~n"),
@@ -118,19 +118,19 @@ format_schema_validation_errors(FilePath, Error) ->
 
 %% Format a single validation error
 format_single_validation_error(#{type := Type, field := Field, message := Msg} = Error) ->
-    io:format("~n  • ~s~n", [format_error_type(Type)]),
-    io:format("    Field: ~s~n", [format_field(Field)]),
-    io:format("    Problem: ~s~n", [Msg]),
+    io:format("~n  * ~ts~n", [format_error_type(Type)]),
+    io:format("    Field: ~ts~n", [format_field(Field)]),
+    io:format("    Problem: ~ts~n", [Msg]),
     case maps:get(suggestion, Error, undefined) of
         undefined -> ok;
-        Sugg -> io:format("    Suggestion: ~s~n", [Sugg])
+        Sugg -> io:format("    Suggestion: ~ts~n", [Sugg])
     end,
     case maps:get(value, Error, undefined) of
         undefined -> ok;
         Val -> io:format("    Current value: ~p~n", [Val])
     end;
 format_single_validation_error(Error) ->
-    io:format("  • ~p~n", [Error]).
+    io:format("  * ~p~n", [Error]).
 
 %% Format error type
 format_error_type(missing_field) -> "Missing required field";
@@ -148,15 +148,15 @@ format_field(Field) -> io_lib:format("~p", [Field]).
 
 %% Format operationId validation error
 format_validation_error(FilePath, {invalid_operation_id, Details}) ->
-    io:format("~n❌ operationId validation failed: ~s~n", [FilePath]),
-    io:format("~n  Path: ~s~n", [maps:get(path, Details, "unknown")]),
-    io:format("  Method: ~s~n", [maps:get(method, Details, "unknown")]),
+    io:format("~nERROR: operationId validation failed: ~ts~n", [FilePath]),
+    io:format("~n  Path: ~ts~n", [maps:get(path, Details, "unknown")]),
+    io:format("  Method: ~ts~n", [maps:get(method, Details, "unknown")]),
     case maps:get(reason, Details, undefined) of
         missing_operation_id ->
             io:format("  Problem: Missing operationId~n"),
             io:format("  Suggestion: Add an operationId in camelCase format (e.g., getUserById)~n");
         not_camel_case ->
-            io:format("  Problem: operationId '~s' is not in camelCase format~n", 
+            io:format("  Problem: operationId '~ts' is not in camelCase format~n", 
                      [maps:get(operation_id, Details, "")]),
             io:format("  Suggestion: Use camelCase format - start with lowercase letter, only alphanumeric~n"),
             io:format("  Example: getUserById, createOrder, updateStatus~n");
@@ -166,17 +166,17 @@ format_validation_error(FilePath, {invalid_operation_id, Details}) ->
     io:format("~n"),
     {error, operation_id_validation_failed};
 format_validation_error(FilePath, Error) ->
-    io:format("~n❌ Validation error in: ~s~n", [FilePath]),
+    io:format("~nERROR: Validation error in: ~ts~n", [FilePath]),
     io:format("  Error: ~p~n~n", [Error]),
     {error, validation_failed}.
 
 %% Format generic error
 format_generic_error(FilePath, {file_read_error, Reason}) ->
-    io:format("~n❌ Failed to read file: ~s~n", [FilePath]),
+    io:format("~nERROR: Failed to read file: ~ts~n", [FilePath]),
     io:format("  Reason: ~p~n", [Reason]),
     io:format("  Suggestion: Check that the file exists and is readable~n~n"),
     {error, file_read_error};
 format_generic_error(FilePath, Error) ->
-    io:format("~n❌ Error processing: ~s~n", [FilePath]),
+    io:format("~nERROR: Error processing: ~ts~n", [FilePath]),
     io:format("  Error: ~p~n~n", [Error]),
     {error, unknown_error}.

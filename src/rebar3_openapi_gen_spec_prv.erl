@@ -50,7 +50,7 @@ do(State) ->
                 %% Call the generation logic
                 case generate_spec(HandlerPath, AppName, OutputPath, Format) of
                     ok ->
-                        rebar_api:info("✓ Spec generation completed successfully", []),
+                        rebar_api:info("SUCCESS: Spec generation completed successfully", []),
                         {ok, State};
                     {error, Reason} ->
                         {error, format_error(Reason)}

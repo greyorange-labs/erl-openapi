@@ -52,7 +52,7 @@ do(State) ->
                 %% Call the generation logic
                 case generate_erlang(SpecPath, HandlerPath, AppName, DryRun, Backup) of
                     ok ->
-                        rebar_api:info("✓ Generation completed successfully", []),
+                        rebar_api:info("SUCCESS: Generation completed successfully", []),
                         {ok, State};
                     {error, Reason} ->
                         {error, format_error(Reason)}
@@ -77,7 +77,7 @@ format_error({yaml_parse_error, #{file := File, errors := Errors}}) when is_list
     ErrorLines = [format_yaml_error(E) || E <- Errors],
     ErrorsFormatted = lists:flatten(lists:join("\n", ErrorLines)),
     lists:flatten(io_lib:format(
-        "Failed to parse OpenAPI YAML: ~s~n~s~n"
+        "Failed to parse OpenAPI YAML: ~ts~n~ts~n"
         "Please fix the YAML syntax errors above.",
         [File, ErrorsFormatted]
     ));
@@ -85,31 +85,31 @@ format_error({yaml_parse_error, #{message := _Msg, reason := {yamerl_exception, 
     ErrorDetails = openapi_yaml_loader:format_yamerl_errors(Exceptions, "spec"),
     format_error({yaml_parse_error, ErrorDetails});
 format_error({yaml_parse_error, #{message := Msg, reason := Reason}}) ->
-    io_lib:format("Failed to parse OpenAPI YAML: ~s~nReason: ~p", [Msg, Reason]);
+    io_lib:format("Failed to parse OpenAPI YAML: ~ts~nReason: ~p", [Msg, Reason]);
 format_error({yaml_parse_error, Err}) ->
     io_lib:format("Failed to parse OpenAPI YAML: ~p", [Err]);
 format_error({schema_validation_failed, Errors}) when is_list(Errors) ->
     ErrorLines = [format_validation_error(E) || E <- Errors],
     ErrorsFormatted = lists:flatten(lists:join("\n", ErrorLines)),
     lists:flatten(io_lib:format(
-        "OpenAPI specification validation failed:~n~s~n"
+        "OpenAPI specification validation failed:~n~ts~n"
         "Refer to: https://swagger.io/specification/",
         [ErrorsFormatted]
     ));
 format_error({schema_validation_failed, Error}) ->
     format_error({schema_validation_failed, [Error]});
 format_error({file_read_error, Path, Err}) ->
-    io_lib:format("Failed to read file ~s: ~p", [Path, Err]);
+    io_lib:format("Failed to read file ~ts: ~p", [Path, Err]);
 format_error({invalid_operation_id, #{path := Path, method := Method, operation_id := undefined, reason := missing_operation_id}}) ->
     io_lib:format(
-        "ERROR: Missing operationId for ~s ~s~n"
+        "ERROR: Missing operationId for ~ts ~ts~n"
         "       All operations must have an operationId defined in camelCase format~n"
         "       Example: operationId: createUser, getUserById, updateOrder",
         [string:to_upper(binary_to_list(Method)), Path]
     );
 format_error({invalid_operation_id, #{path := Path, method := Method, operation_id := OpId, reason := not_camel_case}}) ->
     io_lib:format(
-        "ERROR: Invalid operationId '~s' for ~s ~s~n"
+        "ERROR: Invalid operationId '~ts' for ~ts ~ts~n"
         "       operationId must be in camelCase format~n"
         "       - Must start with lowercase letter (a-z)~n"
         "       - Can only contain letters (a-zA-Z) and numbers (0-9)~n"
@@ -218,18 +218,18 @@ binary_to_list_safe(L) when is_list(L) -> L.
 
 %% Format a single YAML parsing error
 format_yaml_error(#{line := Line, column := Col, message := Msg, suggestion := Sugg}) ->
-    lists:flatten(io_lib:format("  Line ~p, Column ~p: ~s~n  → ~s", [Line, Col, Msg, Sugg]));
+    lists:flatten(io_lib:format("  Line ~p, Column ~p: ~ts~n  Suggestion: ~ts", [Line, Col, Msg, Sugg]));
 format_yaml_error(#{message := Msg}) ->
-    lists:flatten(io_lib:format("  ~s", [Msg]));
+    lists:flatten(io_lib:format("  ~ts", [Msg]));
 format_yaml_error(Error) ->
     lists:flatten(io_lib:format("  ~p", [Error])).
 
 %% Format a single validation error
 format_validation_error(#{type := _Type, field := Field, message := Msg} = Error) ->
     Suggestion = maps:get(suggestion, Error, ""),
-    lists:flatten(io_lib:format("  • ~s: ~s~n    ~s", [format_field_name(Field), Msg, Suggestion]));
+    lists:flatten(io_lib:format("  * ~ts: ~ts~n    ~ts", [format_field_name(Field), Msg, Suggestion]));
 format_validation_error(Error) ->
-    lists:flatten(io_lib:format("  • ~p", [Error])).
+    lists:flatten(io_lib:format("  * ~p", [Error])).
 
 format_field_name(Field) when is_binary(Field) -> binary_to_list(Field);
 format_field_name(Field) when is_atom(Field) -> atom_to_list(Field);
