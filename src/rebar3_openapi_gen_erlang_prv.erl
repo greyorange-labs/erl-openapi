@@ -74,9 +74,9 @@ format_error({missing_arg, handler}) ->
 format_error({missing_arg, app}) ->
     "Missing required argument: --app <app-name>";
 format_error({yaml_parse_error, #{file := File, errors := Errors}}) when is_list(Errors) ->
-    ErrorsFormatted = string:join([format_yaml_error(E) || E <- Errors], "\n"),
+    ErrorsFormatted = lists:flatten([format_yaml_error(E) ++ "\n" || E <- Errors]),
     io_lib:format(
-        "Failed to parse OpenAPI YAML: ~s~n~s~n"
+        "Failed to parse OpenAPI YAML: ~s~n~s"
         "Please fix the YAML syntax errors above.",
         [File, ErrorsFormatted]
     );
@@ -88,9 +88,9 @@ format_error({yaml_parse_error, #{message := Msg, reason := Reason}}) ->
 format_error({yaml_parse_error, Err}) ->
     io_lib:format("Failed to parse OpenAPI YAML: ~p", [Err]);
 format_error({schema_validation_failed, Errors}) when is_list(Errors) ->
-    ErrorsFormatted = string:join([format_validation_error(E) || E <- Errors], "\n"),
+    ErrorsFormatted = lists:flatten([format_validation_error(E) ++ "\n" || E <- Errors]),
     io_lib:format(
-        "OpenAPI specification validation failed:~n~s~n"
+        "OpenAPI specification validation failed:~n~s"
         "Refer to: https://swagger.io/specification/",
         [ErrorsFormatted]
     );
